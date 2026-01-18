@@ -1,25 +1,14 @@
 # VeriSmart HuggingFace Spaces Requirements
-# Secure Backend with Pathway Integration
+# Real-Time Credibility Engine
 
 # Core Framework
 gradio>=4.0.0
-flask>=3.0.0
-flask-cors>=4.0.0
-flask-limiter>=3.5.0
-
-# Security
-bleach>=6.0.0
-python-secrets>=1.0.0
 
 # HTTP & APIs
 requests>=2.31.0
 
-# LLM Providers
-google-generativeai>=0.3.0
-openai>=1.12.0
+# LLM Provider - Google Gemini
+google-generativeai>=0.8.0
 
 # Data Processing
 python-dateutil>=2.8.2
-
-# Rate Limiting Storage (in-memory for HF)
-limits>=3.6.0

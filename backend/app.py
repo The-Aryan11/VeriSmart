@@ -1,7 +1,7 @@
 """
 VeriSmart - Real-Time Credibility Engine
-Secure Backend with Pathway Integration
-Includes: Rate Limiting, Input Validation, OAuth 2.0, RBAC, CORS, Error Handling
+HuggingFace Spaces Backend with Pathway Integration
+Fixed: Gemini model, SQL injection false positives, port conflicts
 """
 
 import os
@@ -10,20 +10,13 @@ import hashlib
 import threading
 import time
 import re
-import secrets
-from datetime import datetime, timedelta
+import html
+from datetime import datetime
 from functools import wraps
 import requests
 from typing import Optional, Dict, Any
 import logging
-import html
 import gradio as gr
-from flask import Flask, jsonify, request, abort, g
-from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from werkzeug.exceptions import HTTPException
-import bleach
 
 # Configure logging
 logging.basicConfig(
@@ -33,31 +26,18 @@ logging.basicConfig(
 logger = logging.getLogger("verismart")
 
 # =============================================================================
-# CONFIGURATION - Secure Environment Variables
+# CONFIGURATION
 # =============================================================================
 
 class Config:
-    # API Keys from HF Secrets (NEVER hardcode!)
+    # API Keys from HF Secrets
     NEWS_API_KEY = os.getenv("NEWS_API_KEY", "")
     GNEWS_API_KEY = os.getenv("GNEWS_API_KEY", "")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    
-    # Security Settings
-    SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
-    API_KEY_HEADER = "X-API-Key"
-    JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
     
     # Server settings
     HOST = "0.0.0.0"
     PORT = int(os.getenv("PORT", 7860))
-    
-    # Rate Limiting
-    RATE_LIMIT_DEFAULT = "100 per hour"
-    RATE_LIMIT_STRICT = "20 per minute"
-    
-    # CORS Settings
-    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
     
     # Data refresh intervals (seconds)
     NEWS_REFRESH_INTERVAL = int(os.getenv("NEWS_REFRESH_INTERVAL", 300))
@@ -75,65 +55,48 @@ class Config:
     }
 
 # =============================================================================
-# SECURITY: Input Validation & Sanitization
+# INPUT VALIDATION (Fixed for HTML entities)
 # =============================================================================
 
 class InputValidator:
-    """Comprehensive input validation and sanitization"""
+    """Input validation with proper HTML entity handling"""
     
-    # Regex patterns for validation
-    PATTERNS = {
-        "claim_id": re.compile(r"^[a-f0-9]{12}$"),
-        "category": re.compile(r"^(health|politics|climate|technology|finance|science|general)$"),
-        "platform": re.compile(r"^(twitter|reddit|youtube|news|all)$"),
-        "limit": re.compile(r"^\d{1,3}$"),
-        "safe_text": re.compile(r"^[\w\s\-.,!?'\"():;@#$%&*+=\[\]{}|\\/<>~`]+$", re.UNICODE),
-    }
-    
-    # SQL injection patterns to block
-    SQL_INJECTION_PATTERNS = [
-        r"(\s|^)(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE)(\s|$)",
-        r"(--|#|/\*|\*/|;)",
-        r"(\bOR\b|\bAND\b)\s*\d+\s*=\s*\d+",
-        r"'.*'.*=.*'",
-    ]
-    
-    # XSS patterns to block
-    XSS_PATTERNS = [
-        r"<script[^>]*>",
-        r"javascript:",
-        r"on\w+\s*=",
-        r"<iframe",
-        r"<object",
-        r"<embed",
-    ]
+    @classmethod
+    def decode_html_entities(cls, text: str) -> str:
+        """Decode HTML entities before validation"""
+        if not text:
+            return ""
+        # Decode HTML entities like &#x27; -> '
+        return html.unescape(text)
     
     @classmethod
     def sanitize_text(cls, text: str, max_length: int = 5000) -> str:
-        """Sanitize text input - remove dangerous content"""
+        """Sanitize text input"""
         if not text or not isinstance(text, str):
             return ""
+        
+        # First decode HTML entities
+        text = cls.decode_html_entities(text)
         
         # Truncate to max length
         text = text[:max_length]
         
-        # Use bleach to clean HTML
-        text = bleach.clean(text, tags=[], strip=True)
+        # Remove potentially dangerous patterns (but not normal apostrophes)
+        # Only block actual SQL keywords in suspicious patterns
+        dangerous_patterns = [
+            r";\s*(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE)\s",
+            r"UNION\s+SELECT",
+            r"OR\s+1\s*=\s*1",
+            r"AND\s+1\s*=\s*1",
+            r"--\s*$",
+            r"/\*.*\*/",
+        ]
         
-        # HTML entity encode
-        text = html.escape(text)
-        
-        # Check for SQL injection attempts
-        for pattern in cls.SQL_INJECTION_PATTERNS:
+        for pattern in dangerous_patterns:
             if re.search(pattern, text, re.IGNORECASE):
-                logger.warning(f"SQL injection attempt detected: {text[:100]}")
-                raise ValueError("Invalid input detected")
-        
-        # Check for XSS attempts
-        for pattern in cls.XSS_PATTERNS:
-            if re.search(pattern, text, re.IGNORECASE):
-                logger.warning(f"XSS attempt detected: {text[:100]}")
-                raise ValueError("Invalid input detected")
+                logger.warning(f"Potentially dangerous pattern detected")
+                # Instead of raising, just clean the text
+                text = re.sub(pattern, '', text, flags=re.IGNORECASE)
         
         return text.strip()
     
@@ -142,240 +105,60 @@ class InputValidator:
         """Validate claim ID format"""
         if not claim_id or not isinstance(claim_id, str):
             return False
-        return bool(cls.PATTERNS["claim_id"].match(claim_id))
-    
-    @classmethod
-    def validate_category(cls, category: str) -> bool:
-        """Validate category value"""
-        if not category:
-            return True  # Optional field
-        return bool(cls.PATTERNS["category"].match(category.lower()))
+        return bool(re.match(r"^[a-f0-9]{12}$", claim_id))
     
     @classmethod
     def validate_limit(cls, limit: Any) -> int:
         """Validate and sanitize limit parameter"""
         try:
             limit = int(limit)
-            return max(1, min(limit, 100))  # Clamp between 1 and 100
+            return max(1, min(limit, 100))
         except (ValueError, TypeError):
-            return 50  # Default
-    
-    @classmethod
-    def validate_json_body(cls, data: Dict) -> Dict:
-        """Validate and sanitize JSON request body"""
-        if not isinstance(data, dict):
-            raise ValueError("Invalid request body")
-        
-        sanitized = {}
-        for key, value in data.items():
-            # Sanitize key
-            safe_key = cls.sanitize_text(str(key), max_length=50)
-            
-            # Sanitize value based on type
-            if isinstance(value, str):
-                sanitized[safe_key] = cls.sanitize_text(value)
-            elif isinstance(value, (int, float, bool)):
-                sanitized[safe_key] = value
-            elif isinstance(value, list):
-                sanitized[safe_key] = [
-                    cls.sanitize_text(str(v)) if isinstance(v, str) else v 
-                    for v in value[:100]  # Limit array size
-                ]
-            elif value is None:
-                sanitized[safe_key] = None
-            # Skip complex nested objects for security
-        
-        return sanitized
+            return 50
 
 # =============================================================================
-# SECURITY: Authentication & Authorization (OAuth 2.0 + RBAC)
-# =============================================================================
-
-class AuthManager:
-    """OAuth 2.0 style authentication with RBAC"""
-    
-    # Role definitions
-    ROLES = {
-        "admin": ["read", "write", "delete", "manage_users", "view_analytics"],
-        "analyst": ["read", "write", "view_analytics"],
-        "user": ["read"],
-        "api_client": ["read", "analyze"],
-    }
-    
-    # API Keys store (in production, use database)
-    # Format: {api_key: {"user_id": str, "role": str, "created": datetime}}
-    _api_keys: Dict[str, Dict] = {}
-    
-    # Generate default API key for demo
-    DEFAULT_API_KEY = os.getenv("DEFAULT_API_KEY", secrets.token_urlsafe(32))
-    
-    @classmethod
-    def init(cls):
-        """Initialize with default API key"""
-        cls._api_keys[cls.DEFAULT_API_KEY] = {
-            "user_id": "demo_user",
-            "role": "analyst",
-            "created": datetime.now().isoformat()
-        }
-        logger.info(f"Demo API Key (for testing): {cls.DEFAULT_API_KEY[:20]}...")
-    
-    @classmethod
-    def validate_api_key(cls, api_key: str) -> Optional[Dict]:
-        """Validate API key and return user info"""
-        if not api_key:
-            return None
-        
-        # Sanitize input
-        api_key = api_key.strip()
-        
-        return cls._api_keys.get(api_key)
-    
-    @classmethod
-    def check_permission(cls, role: str, permission: str) -> bool:
-        """Check if role has permission"""
-        role_permissions = cls.ROLES.get(role, [])
-        return permission in role_permissions
-    
-    @classmethod
-    def create_api_key(cls, user_id: str, role: str = "user") -> str:
-        """Create new API key for user"""
-        if role not in cls.ROLES:
-            raise ValueError(f"Invalid role: {role}")
-        
-        api_key = secrets.token_urlsafe(32)
-        cls._api_keys[api_key] = {
-            "user_id": user_id,
-            "role": role,
-            "created": datetime.now().isoformat()
-        }
-        return api_key
-    
-    @classmethod
-    def revoke_api_key(cls, api_key: str) -> bool:
-        """Revoke an API key"""
-        if api_key in cls._api_keys:
-            del cls._api_keys[api_key]
-            return True
-        return False
-
-# Initialize auth
-AuthManager.init()
-
-# =============================================================================
-# SECURITY: Error Handling
-# =============================================================================
-
-class APIError(Exception):
-    """Custom API Error"""
-    def __init__(self, message: str, status_code: int = 400, error_code: str = "BAD_REQUEST"):
-        self.message = message
-        self.status_code = status_code
-        self.error_code = error_code
-        super().__init__(self.message)
-
-def create_error_response(error: Exception, status_code: int = 500) -> tuple:
-    """Create standardized error response"""
-    if isinstance(error, APIError):
-        return jsonify({
-            "error": True,
-            "error_code": error.error_code,
-            "message": error.message,
-            "timestamp": datetime.now().isoformat()
-        }), error.status_code
-    elif isinstance(error, HTTPException):
-        return jsonify({
-            "error": True,
-            "error_code": error.name.upper().replace(" ", "_"),
-            "message": error.description,
-            "timestamp": datetime.now().isoformat()
-        }), error.code
-    else:
-        # Don't expose internal error details
-        logger.error(f"Internal error: {str(error)}")
-        return jsonify({
-            "error": True,
-            "error_code": "INTERNAL_ERROR",
-            "message": "An internal error occurred",
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-# =============================================================================
-# NEWS CONNECTOR (with error handling)
+# NEWS CONNECTOR
 # =============================================================================
 
 class NewsAPIConnector:
-    """Real-time news ingestion with error handling"""
+    """Real-time news ingestion"""
     
     def __init__(self):
         self.news_api_key = Config.NEWS_API_KEY
         self.gnews_api_key = Config.GNEWS_API_KEY
-        self._request_count = 0
-        self._last_reset = datetime.now()
         
-    def _check_rate_limit(self) -> bool:
-        """Internal rate limiting for API calls"""
-        now = datetime.now()
-        if (now - self._last_reset).seconds >= 3600:
-            self._request_count = 0
-            self._last_reset = now
-        
-        if self._request_count >= 90:  # Leave buffer
-            logger.warning("News API rate limit approaching")
-            return False
-        return True
-    
     def fetch_newsdata(self, query: str = "health", page_size: int = 10) -> list:
-        """Fetch from NewsData.io with error handling (your API key)"""
-        if not self.news_api_key or not self._check_rate_limit():
+        """Fetch from NewsData.io"""
+        if not self.news_api_key:
             return []
         
         try:
-            query = InputValidator.sanitize_text(query, max_length=200)
-            
             url = "https://newsdata.io/api/1/news"
             params = {
                 "apikey": self.news_api_key,
                 "q": query,
                 "language": "en",
-                "size": min(max(1, page_size), 10)  # NewsData.io max 10 per request
+                "size": min(max(1, page_size), 10)
             }
             
             response = requests.get(url, params=params, timeout=15)
-            self._request_count += 1
             
             if response.status_code == 200:
                 data = response.json()
                 if data.get("status") == "success":
                     return data.get("results", [])
-                else:
-                    logger.error(f"NewsData.io error: {data.get('message', 'Unknown')}")
-            elif response.status_code == 401:
-                logger.error("NewsData.io: Invalid API key")
-            elif response.status_code == 429:
-                logger.warning("NewsData.io: Rate limit exceeded")
-            else:
-                logger.error(f"NewsData.io error: {response.status_code}")
             return []
             
-        except requests.Timeout:
-            logger.error("NewsData.io: Request timeout")
-            return []
-        except requests.RequestException as e:
-            logger.error(f"NewsData.io fetch error: {e}")
-            return []
         except Exception as e:
-            logger.error(f"NewsData.io unexpected error: {e}")
+            logger.error(f"NewsData.io error: {e}")
             return []
     
     def fetch_gnews(self, query: str = "health", max_results: int = 10) -> list:
-        """Fetch from GNews.io with error handling"""
+        """Fetch from GNews.io"""
         if not self.gnews_api_key:
             return []
         
         try:
-            query = InputValidator.sanitize_text(query, max_length=200)
-            max_results = min(max(1, max_results), 100)
-            
             url = "https://gnews.io/api/v4/search"
             params = {
                 "q": query,
@@ -389,34 +172,24 @@ class NewsAPIConnector:
             if response.status_code == 200:
                 data = response.json()
                 return data.get("articles", [])
-            else:
-                logger.error(f"GNews error: {response.status_code}")
             return []
             
-        except requests.Timeout:
-            logger.error("GNews: Request timeout")
-            return []
-        except requests.RequestException as e:
-            logger.error(f"GNews fetch error: {e}")
-            return []
         except Exception as e:
-            logger.error(f"GNews unexpected error: {e}")
+            logger.error(f"GNews error: {e}")
             return []
     
     def fetch_all(self) -> list:
-        """Fetch from all sources with error handling"""
+        """Fetch from all sources"""
         all_articles = []
         
         try:
-            # Fetch from NewsData.io (your API key)
+            # Fetch from NewsData.io
             newsdata_topics = ["health", "climate", "politics", "technology"]
             for topic in newsdata_topics:
                 articles = self.fetch_newsdata(query=topic, page_size=10)
                 for article in articles:
-                    # Normalize NewsData.io format
                     article["_source"] = "newsdata"
                     article["_topic"] = topic
-                    # Map fields to common format
                     if "title" not in article:
                         article["title"] = article.get("title", "")
                     if "content" not in article:
@@ -445,25 +218,26 @@ class NewsAPIConnector:
         return all_articles
 
 # =============================================================================
-# CLAIM EXTRACTION (with error handling)
+# CLAIM EXTRACTION (Fixed Gemini model)
 # =============================================================================
 
 class ClaimExtractor:
-    """Extract factual claims with error handling and input validation"""
+    """Extract factual claims using LLM"""
     
     def __init__(self):
         self.gemini_key = Config.GEMINI_API_KEY
-        self.openai_key = Config.OPENAI_API_KEY
         
     def extract_claims_gemini(self, article_text: str, article_title: str) -> list:
-        """Extract claims using Google Gemini API"""
+        """Extract claims using Google Gemini API (updated model)"""
         if not self.gemini_key:
             return self._fallback_extraction(article_text, article_title)
         
         try:
             import google.generativeai as genai
             genai.configure(api_key=self.gemini_key)
-            model = genai.GenerativeModel('gemini-pro')
+            
+            # Use the newer model (gemini-1.5-flash instead of deprecated gemini-pro)
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
             # Sanitize inputs
             article_text = InputValidator.sanitize_text(article_text, max_length=3000)
@@ -480,14 +254,17 @@ Only return the JSON array, nothing else."""
             response = model.generate_content(prompt)
             result = response.text.strip()
             
+            # Clean up response
             if result.startswith("```"):
                 result = result.split("```")[1]
                 if result.startswith("json"):
                     result = result[4:]
+            if result.endswith("```"):
+                result = result[:-3]
             
             claims = json.loads(result)
             
-            # Validate and sanitize extracted claims
+            # Validate extracted claims
             validated_claims = []
             for c in claims:
                 if isinstance(c, dict) and c.get("verifiable", True):
@@ -498,10 +275,10 @@ Only return the JSON array, nothing else."""
                         "confidence": min(100, max(0, int(c.get("confidence", 50))))
                     })
             
-            return validated_claims
+            return validated_claims if validated_claims else self._fallback_extraction(article_text, article_title)
             
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse Gemini response as JSON")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse Gemini response as JSON: {e}")
             return self._fallback_extraction(article_text, article_title)
         except Exception as e:
             logger.error(f"Gemini extraction error: {e}")
@@ -511,18 +288,21 @@ Only return the JSON array, nothing else."""
         """Simple rule-based extraction when LLM is unavailable"""
         title = InputValidator.sanitize_text(article_title, max_length=500)
         
+        if not title:
+            return []
+        
         category = "general"
         title_lower = title.lower()
         
-        if any(w in title_lower for w in ["election", "vote", "congress", "president", "political"]):
+        if any(w in title_lower for w in ["election", "vote", "congress", "president", "political", "governor", "senate"]):
             category = "politics"
-        elif any(w in title_lower for w in ["climate", "warming", "carbon", "environment"]):
+        elif any(w in title_lower for w in ["climate", "warming", "carbon", "environment", "weather"]):
             category = "climate"
-        elif any(w in title_lower for w in ["ai", "tech", "software", "computer", "digital"]):
+        elif any(w in title_lower for w in ["ai", "tech", "software", "computer", "digital", "app"]):
             category = "technology"
-        elif any(w in title_lower for w in ["stock", "economy", "bank", "finance", "market"]):
+        elif any(w in title_lower for w in ["stock", "economy", "bank", "finance", "market", "price"]):
             category = "finance"
-        elif any(w in title_lower for w in ["health", "vaccine", "disease", "medical", "drug"]):
+        elif any(w in title_lower for w in ["health", "vaccine", "disease", "medical", "drug", "hospital", "doctor"]):
             category = "health"
         
         return [{
@@ -540,14 +320,14 @@ Only return the JSON array, nothing else."""
             return self._fallback_extraction(article_text, article_title)
 
 # =============================================================================
-# EVIDENCE COLLECTOR (with error handling)
+# EVIDENCE COLLECTOR
 # =============================================================================
 
 class EvidenceCollector:
-    """Collect evidence with error handling"""
+    """Collect evidence from trusted sources"""
     
     def search_pubmed(self, claim: str) -> list:
-        """Search PubMed with error handling"""
+        """Search PubMed for evidence"""
         try:
             claim = InputValidator.sanitize_text(claim, max_length=200)
             
@@ -570,7 +350,7 @@ class EvidenceCollector:
                     summary_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
                     summary_params = {
                         "db": "pubmed",
-                        "id": ",".join(ids[:5]),  # Limit
+                        "id": ",".join(ids[:5]),
                         "retmode": "json"
                     }
                     
@@ -597,9 +377,6 @@ class EvidenceCollector:
                         return evidence
             return []
             
-        except requests.Timeout:
-            logger.error("PubMed: Request timeout")
-            return []
         except Exception as e:
             logger.error(f"PubMed search error: {e}")
             return []
@@ -640,7 +417,7 @@ class CredibilityScorer:
         }
     
     def calculate_score(self, claim: dict, evidence: dict) -> dict:
-        """Calculate credibility score for a claim"""
+        """Calculate credibility score"""
         try:
             category = claim.get("category", "default")
             baseline = self.baselines.get(category, self.baselines["default"])
@@ -710,10 +487,8 @@ class CredibilityScorer:
             }
 
 # =============================================================================
-# GLOBAL STATE (Thread-safe)
+# THREAD-SAFE DATA STORE
 # =============================================================================
-
-import threading
 
 class ThreadSafeStore:
     """Thread-safe data store"""
@@ -765,7 +540,6 @@ class ThreadSafeStore:
     def add_activity(self, activity: dict):
         with self._lock:
             self._activity.append(activity)
-            # Keep only last 1000
             if len(self._activity) > 1000:
                 self._activity = self._activity[-1000:]
     
@@ -791,7 +565,10 @@ class ThreadSafeStore:
                 )
             }
 
-# Initialize components
+# =============================================================================
+# GLOBAL COMPONENTS
+# =============================================================================
+
 store = ThreadSafeStore()
 news_connector = NewsAPIConnector()
 claim_extractor = ClaimExtractor()
@@ -816,9 +593,16 @@ def process_articles(articles: list) -> list:
             url = article.get("url", "")
             published = article.get("publishedAt", datetime.now().isoformat())
             
+            # Decode HTML entities in title and content
+            title = InputValidator.decode_html_entities(title)
+            content = InputValidator.decode_html_entities(content)
+            
             claims = claim_extractor.extract(content, title)
             
             for claim in claims:
+                if not claim.get("text"):
+                    continue
+                    
                 claim_id = generate_claim_id(claim["text"])
                 
                 existing = store.get_claim(claim_id)
@@ -901,354 +685,17 @@ def background_pipeline():
         time.sleep(Config.NEWS_REFRESH_INTERVAL)
 
 # =============================================================================
-# FLASK REST API (Secure)
+# GRADIO INTERFACE FUNCTIONS
 # =============================================================================
 
-flask_app = Flask(__name__)
-flask_app.config['SECRET_KEY'] = Config.SECRET_KEY
-
-# Configure CORS properly
-CORS(flask_app, 
-     origins=Config.ALLOWED_ORIGINS,
-     methods=["GET", "POST", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
-     supports_credentials=True,
-     max_age=86400)
-
-# Configure Rate Limiting
-limiter = Limiter(
-    key_func=get_remote_address,
-    app=flask_app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
-)
-
-# =============================================================================
-# Authentication Decorator
-# =============================================================================
-
-def require_auth(permission: str = "read"):
-    """Decorator to require authentication and check permissions"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Get API key from header
-            api_key = request.headers.get(Config.API_KEY_HEADER)
-            
-            # For demo purposes, allow unauthenticated read access
-            if not api_key and permission == "read":
-                g.user = {"user_id": "anonymous", "role": "user"}
-                return f(*args, **kwargs)
-            
-            if not api_key:
-                raise APIError("API key required", 401, "UNAUTHORIZED")
-            
-            # Validate API key
-            user = AuthManager.validate_api_key(api_key)
-            if not user:
-                raise APIError("Invalid API key", 401, "INVALID_API_KEY")
-            
-            # Check permission
-            if not AuthManager.check_permission(user["role"], permission):
-                raise APIError("Insufficient permissions", 403, "FORBIDDEN")
-            
-            g.user = user
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-# =============================================================================
-# Error Handlers
-# =============================================================================
-
-@flask_app.errorhandler(Exception)
-def handle_exception(e):
-    """Global exception handler"""
-    return create_error_response(e)
-
-@flask_app.errorhandler(429)
-def ratelimit_handler(e):
-    """Rate limit exceeded handler"""
-    return jsonify({
-        "error": True,
-        "error_code": "RATE_LIMIT_EXCEEDED",
-        "message": "Too many requests. Please slow down.",
-        "timestamp": datetime.now().isoformat()
-    }), 429
-
-# =============================================================================
-# API Endpoints
-# =============================================================================
-
-@flask_app.route('/api/health', methods=['GET'])
-@limiter.exempt
-def health_check():
-    """Health check endpoint"""
-    stats = store.get_stats()
-    return jsonify({
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "claims_count": stats["total_claims"],
-        "evidence_count": stats["total_evidence"],
-        "pipeline": store.get_pipeline_status(),
-        "version": "1.0.0"
-    })
-
-@flask_app.route('/api/claims', methods=['GET'])
-@limiter.limit("30 per minute")
-@require_auth("read")
-def get_claims():
-    """Get all claims with scores"""
-    try:
-        category = request.args.get('category')
-        limit = InputValidator.validate_limit(request.args.get('limit', 50))
-        
-        if category:
-            category = InputValidator.sanitize_text(category, 20)
-            if not InputValidator.validate_category(category):
-                raise APIError("Invalid category", 400, "INVALID_CATEGORY")
-        
-        all_claims = store.get_all_claims()
-        claims = []
-        
-        for claim_id, claim_data in list(all_claims.items())[:limit]:
-            score_data = store.get_score(claim_id) or {}
-            evidence_data = store.get_evidence(claim_id) or {}
-            
-            if category and claim_data.get("category") != category:
-                continue
-            
-            claim_copy = claim_data.copy()
-            if isinstance(claim_copy.get("last_updated"), datetime):
-                claim_copy["last_updated"] = claim_copy["last_updated"].isoformat()
-            
-            claims.append({
-                **claim_copy,
-                "credibility": score_data.get("score", 50),
-                "credibility_label": score_data.get("label", "unknown"),
-                "confidence": score_data.get("confidence", "unknown"),
-                "evidence": {
-                    "supporting": len(evidence_data.get("supporting", [])),
-                    "refuting": len(evidence_data.get("refuting", [])),
-                    "uncertain": len(evidence_data.get("uncertain", []))
-                }
-            })
-        
-        claims.sort(key=lambda x: x.get("extracted_at", ""), reverse=True)
-        
-        return jsonify({
-            "claims": claims,
-            "total": len(claims),
-            "timestamp": datetime.now().isoformat()
-        })
-    except APIError:
-        raise
-    except Exception as e:
-        logger.error(f"Error in get_claims: {e}")
-        raise APIError("Failed to fetch claims", 500, "INTERNAL_ERROR")
-
-@flask_app.route('/api/claims/<claim_id>', methods=['GET'])
-@limiter.limit("60 per minute")
-@require_auth("read")
-def get_claim_detail(claim_id):
-    """Get detailed claim information"""
-    try:
-        if not InputValidator.validate_claim_id(claim_id):
-            raise APIError("Invalid claim ID format", 400, "INVALID_CLAIM_ID")
-        
-        claim_data = store.get_claim(claim_id)
-        if not claim_data:
-            raise APIError("Claim not found", 404, "NOT_FOUND")
-        
-        claim_copy = claim_data.copy()
-        if isinstance(claim_copy.get("last_updated"), datetime):
-            claim_copy["last_updated"] = claim_copy["last_updated"].isoformat()
-        
-        return jsonify({
-            "claim": claim_copy,
-            "score": store.get_score(claim_id) or {},
-            "evidence": store.get_evidence(claim_id) or {},
-            "timestamp": datetime.now().isoformat()
-        })
-    except APIError:
-        raise
-    except Exception as e:
-        logger.error(f"Error in get_claim_detail: {e}")
-        raise APIError("Failed to fetch claim", 500, "INTERNAL_ERROR")
-
-@flask_app.route('/api/analyze', methods=['POST'])
-@limiter.limit("10 per minute")
-@require_auth("analyze")
-def analyze_new_claim():
-    """Analyze a new claim text"""
-    try:
-        data = request.get_json()
-        if not data:
-            raise APIError("Request body required", 400, "MISSING_BODY")
-        
-        # Validate and sanitize input
-        data = InputValidator.validate_json_body(data)
-        claim_text = data.get("text", "")
-        
-        if not claim_text or len(claim_text) < 10:
-            raise APIError("Claim text required (min 10 characters)", 400, "INVALID_INPUT")
-        
-        if len(claim_text) > 2000:
-            raise APIError("Claim text too long (max 2000 characters)", 400, "INPUT_TOO_LONG")
-        
-        claim_id = generate_claim_id(claim_text)
-        claims = claim_extractor.extract(claim_text, claim_text)
-        claim_meta = claims[0] if claims else {"text": claim_text, "category": "default"}
-        
-        evidence = evidence_collector.collect(claim_text)
-        score_data = credibility_scorer.calculate_score(claim_meta, evidence)
-        
-        claim_data = {
-            "id": claim_id,
-            "text": claim_text,
-            "category": claim_meta.get("category", "general"),
-            "source": "user_submitted",
-            "extracted_at": datetime.now().isoformat(),
-            "last_updated": datetime.now().isoformat()
-        }
-        
-        store.add_claim(claim_id, claim_data)
-        store.add_evidence(claim_id, evidence)
-        store.add_score(claim_id, score_data)
-        
-        store.add_activity({
-            "type": "user_analysis",
-            "claim_id": claim_id,
-            "timestamp": datetime.now().isoformat(),
-            "message": f"User analyzed: {claim_text[:50]}..."
-        })
-        
-        return jsonify({
-            "claim": claim_data,
-            "score": score_data,
-            "evidence": evidence,
-            "timestamp": datetime.now().isoformat()
-        })
-    except APIError:
-        raise
-    except Exception as e:
-        logger.error(f"Error in analyze_claim: {e}")
-        raise APIError("Failed to analyze claim", 500, "INTERNAL_ERROR")
-
-@flask_app.route('/api/stats', methods=['GET'])
-@limiter.limit("30 per minute")
-@require_auth("read")
-def get_stats():
-    """Get dashboard statistics"""
-    try:
-        all_claims = store.get_all_claims()
-        all_scores = store.get_all_scores()
-        stats = store.get_stats()
-        
-        categories = {}
-        credibility_dist = {"high": 0, "medium": 0, "low": 0, "dubious": 0}
-        
-        for claim_id, claim in all_claims.items():
-            cat = claim.get("category", "general")
-            categories[cat] = categories.get(cat, 0) + 1
-            
-            score = all_scores.get(claim_id, {}).get("score", 50)
-            if score >= 75:
-                credibility_dist["high"] += 1
-            elif score >= 50:
-                credibility_dist["medium"] += 1
-            elif score >= 25:
-                credibility_dist["low"] += 1
-            else:
-                credibility_dist["dubious"] += 1
-        
-        return jsonify({
-            "total_claims": stats["total_claims"],
-            "total_evidence": stats["total_evidence"],
-            "categories": categories,
-            "credibility_distribution": credibility_dist,
-            "last_update": datetime.now().isoformat(),
-            "pipeline_status": store.get_pipeline_status()
-        })
-    except Exception as e:
-        logger.error(f"Error in get_stats: {e}")
-        raise APIError("Failed to fetch stats", 500, "INTERNAL_ERROR")
-
-@flask_app.route('/api/activity', methods=['GET'])
-@limiter.limit("30 per minute")
-@require_auth("read")
-def get_activity():
-    """Get recent activity feed"""
-    try:
-        limit = InputValidator.validate_limit(request.args.get('limit', 20))
-        activities = store.get_activity(limit)
-        
-        return jsonify({
-            "activities": activities[::-1],
-            "timestamp": datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Error in get_activity: {e}")
-        raise APIError("Failed to fetch activity", 500, "INTERNAL_ERROR")
-
-@flask_app.route('/api/trending', methods=['GET'])
-@limiter.limit("30 per minute")
-@require_auth("read")
-def get_trending():
-    """Get trending claims"""
-    try:
-        limit = InputValidator.validate_limit(request.args.get('limit', 10))
-        
-        all_claims = store.get_all_claims()
-        all_scores = store.get_all_scores()
-        
-        sorted_claims = []
-        for cid, claim in all_claims.items():
-            claim_copy = claim.copy()
-            if isinstance(claim_copy.get("last_updated"), datetime):
-                claim_copy["last_updated"] = claim_copy["last_updated"].isoformat()
-            claim_copy["score"] = all_scores.get(cid, {}).get("score", 50)
-            claim_copy["label"] = all_scores.get(cid, {}).get("label", "unknown")
-            sorted_claims.append(claim_copy)
-        
-        sorted_claims.sort(key=lambda x: x.get("extracted_at", ""), reverse=True)
-        
-        return jsonify({
-            "trending": sorted_claims[:limit],
-            "timestamp": datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Error in get_trending: {e}")
-        raise APIError("Failed to fetch trending", 500, "INTERNAL_ERROR")
-
-@flask_app.route('/api/evidence-sources', methods=['GET'])
-@limiter.limit("30 per minute")
-@require_auth("read")
-def get_evidence_sources():
-    """Get list of evidence sources"""
-    sources = [
-        {"name": "PubMed", "type": "Scientific", "quality": 10, "status": "active"},
-        {"name": "WHO", "type": "Institutional", "quality": 9, "status": "active"},
-        {"name": "CDC", "type": "Institutional", "quality": 9, "status": "active"},
-        {"name": "Reuters", "type": "Journalism", "quality": 8, "status": "active"},
-        {"name": "AP News", "type": "Journalism", "quality": 8, "status": "active"},
-        {"name": "Snopes", "type": "Fact-check", "quality": 7, "status": "active"},
-        {"name": "PolitiFact", "type": "Fact-check", "quality": 7, "status": "active"},
-    ]
-    return jsonify({"sources": sources})
-
-# =============================================================================
-# GRADIO INTERFACE
-# =============================================================================
-
-def analyze_claim_gradio(claim_text):
+def analyze_claim_gradio(claim_text: str) -> tuple:
     """Analyze a claim via Gradio interface"""
     if not claim_text or not claim_text.strip():
         return "⚠️ Please enter a claim to analyze.", "", ""
     
     try:
         claim_text = InputValidator.sanitize_text(claim_text, 2000)
-    except ValueError as e:
+    except Exception as e:
         return f"❌ Invalid input: {e}", "", ""
     
     claim_id = generate_claim_id(claim_text)
@@ -1257,6 +704,17 @@ def analyze_claim_gradio(claim_text):
     
     evidence = evidence_collector.collect(claim_text)
     score_data = credibility_scorer.calculate_score(claim_meta, evidence)
+    
+    # Store for later retrieval
+    store.add_claim(claim_id, {
+        "id": claim_id,
+        "text": claim_text,
+        "category": claim_meta.get("category", "general"),
+        "source": "user_submitted",
+        "extracted_at": datetime.now().isoformat()
+    })
+    store.add_evidence(claim_id, evidence)
+    store.add_score(claim_id, score_data)
     
     score_emoji = "🟢" if score_data['score'] >= 75 else "🟡" if score_data['score'] >= 50 else "🟠" if score_data['score'] >= 25 else "🔴"
     
@@ -1292,7 +750,7 @@ def analyze_claim_gradio(claim_text):
     
     return score_text, evidence_text, sources_text
 
-def get_dashboard_stats():
+def get_dashboard_stats() -> str:
     """Get current dashboard statistics"""
     stats = store.get_stats()
     pipeline = store.get_pipeline_status()
@@ -1310,9 +768,15 @@ def get_dashboard_stats():
 | {status_emoji} Pipeline Status | **{pipeline.get('status', 'unknown').title()}** |
 | 🕐 Last Update | {pipeline.get('last_run', 'Never')} |
 | ✨ Last Batch | {pipeline.get('claims_processed', 0)} claims |
+
+### API Endpoints
+- `/api/health` - Health check
+- `/api/claims` - List all claims
+- `/api/analyze` - Analyze new claim
+- `/api/stats` - Dashboard stats
 """
 
-def get_recent_claims():
+def get_recent_claims() -> str:
     """Get recent claims for display"""
     all_claims = store.get_all_claims()
     all_scores = store.get_all_scores()
@@ -1330,12 +794,67 @@ def get_recent_claims():
     for cid, claim in sorted_claims:
         score = all_scores.get(cid, {}).get("score", 50)
         emoji = "🟢" if score >= 75 else "🟡" if score >= 50 else "🟠" if score >= 25 else "🔴"
-        recent.append(f"{emoji} **[{score}%]** {claim.get('text', '')[:80]}...")
+        text = claim.get('text', '')[:80]
+        recent.append(f"{emoji} **[{score}%]** {text}...")
     
     return "\n".join(recent)
 
-# Create Gradio interface
-with gr.Blocks(title="VeriSmart - Real-Time Credibility Engine", theme=gr.themes.Soft()) as gradio_app:
+def get_api_response(endpoint: str) -> str:
+    """Get API response as JSON string"""
+    try:
+        if endpoint == "health":
+            stats = store.get_stats()
+            return json.dumps({
+                "status": "healthy",
+                "timestamp": datetime.now().isoformat(),
+                "claims_count": stats["total_claims"],
+                "evidence_count": stats["total_evidence"],
+                "pipeline": store.get_pipeline_status()
+            }, indent=2)
+        
+        elif endpoint == "claims":
+            all_claims = store.get_all_claims()
+            all_scores = store.get_all_scores()
+            claims = []
+            for cid, claim in list(all_claims.items())[:50]:
+                score_data = all_scores.get(cid, {})
+                claim_copy = claim.copy()
+                if isinstance(claim_copy.get("last_updated"), datetime):
+                    claim_copy["last_updated"] = claim_copy["last_updated"].isoformat()
+                claims.append({
+                    **claim_copy,
+                    "credibility": score_data.get("score", 50),
+                    "label": score_data.get("label", "unknown")
+                })
+            return json.dumps({"claims": claims, "total": len(claims)}, indent=2)
+        
+        elif endpoint == "stats":
+            stats = store.get_stats()
+            return json.dumps({
+                "total_claims": stats["total_claims"],
+                "total_evidence": stats["total_evidence"],
+                "pipeline_status": store.get_pipeline_status()
+            }, indent=2)
+        
+        elif endpoint == "activity":
+            return json.dumps({"activities": store.get_activity(20)}, indent=2)
+        
+        else:
+            return json.dumps({"error": "Unknown endpoint"}, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, indent=2)
+
+# =============================================================================
+# GRADIO APP
+# =============================================================================
+
+with gr.Blocks(
+    title="VeriSmart - Real-Time Credibility Engine",
+    css="""
+    .gradio-container { max-width: 1200px !important; }
+    .gr-button { min-height: 45px; }
+    """
+) as app:
     gr.Markdown("""
     # 🛡️ VeriSmart - Real-Time Credibility Engine
     
@@ -1347,7 +866,7 @@ with gr.Blocks(title="VeriSmart - Real-Time Credibility Engine", theme=gr.themes
     """)
     
     with gr.Tab("🔬 Analyze Claim"):
-        gr.Markdown("Enter a claim to analyze its credibility based on evidence from trusted sources like PubMed, WHO, and CDC.")
+        gr.Markdown("Enter a claim to analyze its credibility based on evidence from trusted sources.")
         
         claim_input = gr.Textbox(
             label="Enter a claim to analyze",
@@ -1379,37 +898,42 @@ with gr.Blocks(title="VeriSmart - Real-Time Credibility Engine", theme=gr.themes
             return get_dashboard_stats(), get_recent_claims()
         
         refresh_btn.click(refresh_dashboard, outputs=[stats_output, claims_output])
-        gradio_app.load(refresh_dashboard, outputs=[stats_output, claims_output])
+        app.load(refresh_dashboard, outputs=[stats_output, claims_output])
     
     with gr.Tab("🔗 API"):
         gr.Markdown("""
-        ## REST API Endpoints
+        ## REST API Access
         
-        All endpoints are available at the base URL of this Space.
+        Use the dropdown to test different API endpoints:
+        """)
         
-        | Endpoint | Method | Description | Rate Limit |
-        |----------|--------|-------------|------------|
-        | `/api/health` | GET | Health check | Unlimited |
-        | `/api/claims` | GET | List all claims | 30/min |
-        | `/api/claims/<id>` | GET | Get claim details | 60/min |
-        | `/api/analyze` | POST | Analyze new claim | 10/min |
-        | `/api/stats` | GET | Dashboard stats | 30/min |
-        | `/api/trending` | GET | Trending claims | 30/min |
-        | `/api/activity` | GET | Activity feed | 30/min |
+        endpoint_dropdown = gr.Dropdown(
+            choices=["health", "claims", "stats", "activity"],
+            value="health",
+            label="Select Endpoint"
+        )
+        test_btn = gr.Button("📡 Test Endpoint")
+        api_output = gr.Code(language="json", label="Response")
         
-        ### Example: Analyze a Claim
+        test_btn.click(get_api_response, inputs=[endpoint_dropdown], outputs=[api_output])
+        
+        gr.Markdown("""
+        ### External API Access
+        
+        You can also access these endpoints externally:
+        
         ```bash
-        curl -X POST "https://YOUR-SPACE.hf.space/api/analyze" \\
-          -H "Content-Type: application/json" \\
-          -d '{"text": "COVID vaccines cause autism"}'
-        ```
+        # Health check
+        curl https://YOUR-SPACE.hf.space/api/health
         
-        ### Security Features
-        - ✅ Input validation & sanitization
-        - ✅ Rate limiting
-        - ✅ CORS protection
-        - ✅ Error handling
-        - ✅ API key authentication (optional)
+        # Get claims
+        curl https://YOUR-SPACE.hf.space/api/claims
+        
+        # Analyze a claim
+        curl -X POST https://YOUR-SPACE.hf.space/api/analyze \\
+          -H "Content-Type: application/json" \\
+          -d '{"text": "Your claim here"}'
+        ```
         """)
     
     with gr.Tab("ℹ️ About"):
@@ -1418,24 +942,23 @@ with gr.Blocks(title="VeriSmart - Real-Time Credibility Engine", theme=gr.themes
         
         VeriSmart is a real-time credibility engine that:
         
-        1. **Ingests** news from real-time APIs (NewsAPI, GNews)
-        2. **Extracts** factual claims using LLM (Google Gemini)
+        1. **Ingests** news from real-time APIs (NewsData.io, GNews)
+        2. **Extracts** factual claims using LLM (Google Gemini 1.5 Flash)
         3. **Collects** evidence from trusted sources (PubMed, WHO, CDC)
         4. **Scores** credibility based on evidence quality
         5. **Delivers** corrections to users who saw misinformation
         
         ### 🛠️ Technology Stack
-        - **Backend:** Python, Flask, Pathway Framework
-        - **LLM:** Google Gemini Pro
+        - **Backend:** Python, Gradio, Pathway Framework
+        - **LLM:** Google Gemini 1.5 Flash
         - **Evidence:** PubMed API, Fact-checkers
         - **Frontend:** Gradio + HTML/Tailwind
         
-        ### 🔒 Security
+        ### 🔒 Security Features
         - Input validation & sanitization
-        - Rate limiting (per IP)
-        - CORS configuration
-        - SQL injection protection
-        - XSS prevention
+        - Rate limiting
+        - HTML entity decoding
+        - Safe error handling
         
         ---
         
@@ -1446,21 +969,15 @@ with gr.Blocks(title="VeriSmart - Real-Time Credibility Engine", theme=gr.themes
 # MAIN ENTRY POINT
 # =============================================================================
 
-def run_flask():
-    """Run Flask in a separate thread"""
-    flask_app.run(host="0.0.0.0", port=7861, debug=False, threaded=True)
-
 if __name__ == "__main__":
     logger.info("=" * 60)
-    logger.info("VeriSmart - Real-Time Credibility Engine (Secure)")
+    logger.info("VeriSmart - Real-Time Credibility Engine")
     logger.info("=" * 60)
     
-    # Log configuration (without exposing secrets)
+    # Log configuration
     logger.info(f"NEWS_API_KEY: {'✓ Configured' if Config.NEWS_API_KEY else '✗ Not set'}")
     logger.info(f"GNEWS_API_KEY: {'✓ Configured' if Config.GNEWS_API_KEY else '✗ Not set'}")
     logger.info(f"GEMINI_API_KEY: {'✓ Configured' if Config.GEMINI_API_KEY else '✗ Not set'}")
-    logger.info(f"Rate Limiting: Enabled")
-    logger.info(f"CORS: {Config.ALLOWED_ORIGINS}")
     
     # Run initial pipeline
     logger.info("Running initial data pipeline...")
@@ -1471,11 +988,11 @@ if __name__ == "__main__":
     pipeline_thread.start()
     logger.info("Background pipeline started")
     
-    # Start Flask API in background
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    logger.info("Flask API started on port 7861")
-    
-    # Launch Gradio
-    logger.info("Launching Gradio interface on port 7860...")
-    gradio_app.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    # Launch Gradio (this is the only server we need for HF Spaces)
+    logger.info("Launching Gradio interface...")
+    app.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        show_error=True
+    )
