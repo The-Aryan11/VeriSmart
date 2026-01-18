@@ -1325,6 +1325,21 @@
     </footer>
 
     <script>
+        // Add your HuggingFace Spaces URL here
+const API_BASE_URL = 'https://YOUR_HF_USERNAME-verismart.hf.space';
+
+// Function to fetch real claims from backend
+async function fetchRealClaims() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/claims?limit=20`);
+        const data = await response.json();
+        return data.claims;
+    } catch (error) {
+        console.log('Using simulated data:', error);
+        return null;
+    }
+}
+
         // ============================================
         // DATA & STATE
         // ============================================
