@@ -1,0 +1,49 @@
+# VeriSmart Backend Dependencies
+# Real-Time Credibility Engine powered by Pathway
+
+# Core Pathway Framework
+pathway>=0.8.0
+pathway[xpack-llm]>=0.8.0
+
+# Web Framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# HTTP Requests
+requests>=2.31.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# LLM Providers
+openai>=1.12.0
+google-generativeai>=0.3.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Async Support
+aiohttp>=3.9.0
+
+# Logging & Monitoring
+loguru>=0.7.0
+
+# Vector Store Dependencies
+sentence-transformers>=2.2.0
+
+# Utilities
+python-dateutil>=2.8.2
+hashlib-compat>=1.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Optional: For Kafka streaming
+# kafka-python>=2.0.2
+# confluent-kafka>=2.3.0
+
+# Optional: For database support
+# psycopg2-binary>=2.9.0
+# sqlalchemy>=2.0.0

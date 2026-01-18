@@ -1,0 +1,51 @@
+# GitHub Actions workflow to keep HuggingFace Spaces and Render services alive
+# Sends 6-8 pings per hour (every 8-10 minutes) to prevent cold starts
+
+name: Keep Services Alive
+
+on:
+  schedule:
+    # Run every 8 minutes (7-8 times per hour)
+    - cron: '*/8 * * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  ping-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping HuggingFace Spaces Backend
+        run: |
+          echo "Pinging HuggingFace Spaces..."
+          curl -s -o /dev/null -w "HF Spaces: %{http_code}\n" \
+            --max-time 30 \
+            "${{ secrets.HF_SPACES_URL }}/api/health" || echo "HF Spaces ping failed"
+      
+      - name: Ping Render Frontend
+        run: |
+          echo "Pinging Render Frontend..."
+          curl -s -o /dev/null -w "Render Frontend: %{http_code}\n" \
+            --max-time 30 \
+            "${{ secrets.RENDER_FRONTEND_URL }}" || echo "Render ping failed"
+      
+      - name: Ping Backend API Endpoints
+        run: |
+          echo "Pinging API endpoints to keep warm..."
+          
+          # Ping stats endpoint
+          curl -s -o /dev/null -w "Stats API: %{http_code}\n" \
+            --max-time 30 \
+            "${{ secrets.HF_SPACES_URL }}/api/stats" || true
+          
+          # Ping claims endpoint
+          curl -s -o /dev/null -w "Claims API: %{http_code}\n" \
+            --max-time 30 \
+            "${{ secrets.HF_SPACES_URL }}/api/claims?limit=5" || true
+          
+          # Ping trending endpoint
+          curl -s -o /dev/null -w "Trending API: %{http_code}\n" \
+            --max-time 30 \
+            "${{ secrets.HF_SPACES_URL }}/api/trending" || true
+      
+      - name: Log timestamp
+        run: |
+          echo "Ping completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"

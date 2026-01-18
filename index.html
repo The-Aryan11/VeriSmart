@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriSmart | Real-Time Credibility Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+
+        /* Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+        }
+        
+        @keyframes slide-in-right {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slide-in-up {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes score-fill {
+            from { stroke-dashoffset: 251.2; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        .animate-slide-in-right {
+            animation: slide-in-right 0.5s ease-out forwards;
+        }
+        
+        .animate-slide-in-up {
+            animation: slide-in-up 0.4s ease-out forwards;
+        }
+        
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+        
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .gradient-text-green {
+            background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Score Ring */
+        .score-ring {
+            transform: rotate(-90deg);
+        }
+        
+        .score-ring circle {
+            transition: stroke-dashoffset 1s ease-out;
+        }
+
+        /* Live Indicator */
+        .live-dot {
+            position: relative;
+        }
+        .live-dot::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            animation: ripple 1.5s ease-out infinite;
+        }
+
+        /* Claim Card Hover */
+        .claim-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .claim-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        /* Evidence Bar Animation */
+        .evidence-bar {
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Tab Indicator */
+        .tab-indicator {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Notification Toast */
+        .toast {
+            animation: slide-in-right 0.5s ease-out forwards;
+        }
+        
+        .toast-exit {
+            animation: slide-in-right 0.3s ease-in reverse forwards;
+        }
+
+        /* Custom Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+        }
+        input[type="range"]::-webkit-slider-track {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        /* Stream Line Animation */
+        .stream-line {
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+            animation: shimmer 1.5s infinite linear;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* Typing Effect */
+        .typing-text {
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 2px solid #667eea;
+            animation: typing 2s steps(40) forwards, blink 0.7s step-end infinite;
+        }
+        @keyframes blink {
+            50% { border-color: transparent; }
+        }
+
+        /* Network Graph Node */
+        .network-node {
+            transition: all 0.3s ease;
+        }
+        .network-node:hover {
+            filter: brightness(1.3);
+            transform: scale(1.1);
+        }
+
+        /* Data Stream Visual */
+        .data-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        /* Credibility Colors */
+        .cred-high { color: #10b981; }
+        .cred-medium { color: #f59e0b; }
+        .cred-low { color: #ef4444; }
+        .cred-uncertain { color: #8b5cf6; }
+        
+        .bg-cred-high { background: linear-gradient(135deg, #10b981, #34d399); }
+        .bg-cred-medium { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+        .bg-cred-low { background: linear-gradient(135deg, #ef4444, #f87171); }
+        .bg-cred-uncertain { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+
+        /* Platform Icons */
+        .platform-twitter { color: #1da1f2; }
+        .platform-reddit { color: #ff4500; }
+        .platform-youtube { color: #ff0000; }
+        .platform-news { color: #6366f1; }
+
+        /* Hide scrollbar for horizontal scroll */
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN - Mobile/Tablet/Desktop
+           ============================================ */
+        
+        /* Mobile First Adjustments */
+        @media (max-width: 640px) {
+            /* Navigation */
+            nav .flex.items-center.gap-3 h1 {
+                font-size: 1rem;
+            }
+            nav .flex.items-center.gap-3 p {
+                display: none;
+            }
+            
+            /* Stats Grid */
+            .grid.grid-cols-2 p.text-3xl {
+                font-size: 1.5rem;
+            }
+            
+            /* Pipeline - Stack vertically on mobile */
+            .flex.items-center.justify-between > .flex.flex-col.items-center {
+                transform: scale(0.8);
+            }
+            .flex.items-center.justify-between > .flex-1.h-1 {
+                display: none;
+            }
+            
+            /* Cards */
+            .glass.rounded-2xl.p-6 {
+                padding: 1rem;
+            }
+            .glass.rounded-2xl.p-5 {
+                padding: 0.875rem;
+            }
+            
+            /* Modal */
+            .absolute.inset-4 {
+                inset: 0.5rem;
+            }
+            
+            /* Footer */
+            footer .flex.flex-col.md\\:flex-row {
+                text-align: center;
+            }
+            footer .flex.items-center.gap-4 {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            /* Evidence Analyzer */
+            .lg\\:col-span-3, .lg\\:col-span-2 {
+                grid-column: span 1;
+            }
+            
+            /* Score ring smaller on mobile */
+            .score-ring.w-24, .score-ring.w-28 {
+                width: 5rem;
+                height: 5rem;
+            }
+            
+            /* Hide some elements on mobile */
+            .hidden-mobile {
+                display: none !important;
+            }
+        }
+        
+        /* Tablet Adjustments */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            /* Pipeline adjustments */
+            .flex.items-center.justify-between > .flex.flex-col.items-center > div:first-child {
+                width: 3.5rem;
+                height: 3.5rem;
+            }
+            .flex.items-center.justify-between > .flex.flex-col.items-center > div:first-child svg {
+                width: 1.5rem;
+                height: 1.5rem;
+            }
+            
+            /* Cards grid */
+            .grid.md\\:grid-cols-2.xl\\:grid-cols-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            /* Modal adjustments */
+            .absolute.inset-4.md\\:inset-8 {
+                inset: 1.5rem;
+            }
+        }
+        
+        /* Large Desktop */
+        @media (min-width: 1280px) {
+            .max-w-7xl {
+                max-width: 90rem;
+            }
+        }
+        
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .claim-card:hover {
+                transform: none;
+                box-shadow: none;
+            }
+            
+            .claim-card:active {
+                transform: scale(0.98);
+            }
+            
+            /* Larger touch targets */
+            button, select, .cursor-pointer {
+                min-height: 44px;
+            }
+        }
+        
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            nav {
+                height: 3rem;
+            }
+            main {
+                padding-top: 3.5rem;
+            }
+            .glass.rounded-2xl.p-6 {
+                padding: 0.75rem;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            .fixed, nav, .toast, .modal-backdrop {
+                display: none !important;
+            }
+            body {
+                background: white;
+                color: black;
+            }
+        }
+
+        /* Solid dropdown background */
+        .dropdown-solid {
+            background: #0f172a !important;
+            backdrop-filter: none !important;
+        }
+
+        /* Mobile Bottom Navigation */
+        .safe-area-pb {
+            padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+        }
+        
+        /* Add padding to main content for bottom nav on mobile */
+        @media (max-width: 767px) {
+            main {
+                padding-bottom: 5rem !important;
+            }
+            footer {
+                padding-bottom: 5rem !important;
+            }
+        }
+
+        /* Mobile menu slide animation */
+        @keyframes slide-in-from-right {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        #mobileMenu > div:last-child {
+            animation: slide-in-from-right 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen overflow-x-hidden">
+    <!-- Animated Background -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-float"></div>
+        <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-float" style="animation-delay: -1.5s;"></div>
+        <div class="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-600/10 rounded-full blur-3xl animate-float" style="animation-delay: -0.75s;"></div>
+        <!-- Grid Pattern -->
+        <div class="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-3 cursor-pointer" onclick="showSection('dashboard')">
+                    <div class="relative">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                        </div>
+                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full live-dot"></div>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">VeriSmart</h1>
+                        <p class="text-[10px] text-slate-400 -mt-1 tracking-wider">REAL-TIME CREDIBILITY ENGINE</p>
+                    </div>
+                </div>
+
+                <!-- Center Nav (Desktop) -->
+                <div class="hidden md:flex items-center gap-1 glass rounded-full px-2 py-1">
+                    <button onclick="showSection('dashboard')" class="nav-btn px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-white/10 text-white" data-section="dashboard">
+                        Dashboard
+                    </button>
+                    <button onclick="showSection('claims')" class="nav-btn px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-white/10 text-slate-400" data-section="claims">
+                        Live Claims
+                    </button>
+                    <button onclick="showSection('evidence')" class="nav-btn px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-white/10 text-slate-400" data-section="evidence">
+                        Evidence Lab
+                    </button>
+                    <button onclick="showSection('corrections')" class="nav-btn px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-white/10 text-slate-400" data-section="corrections">
+                        Corrections
+                    </button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg glass hover:bg-white/10 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+
+                <!-- Right Actions -->
+                <div class="flex items-center gap-3">
+                    <!-- Live Status -->
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
+                        <div class="w-2 h-2 rounded-full bg-green-500 live-dot"></div>
+                        <span class="text-xs font-medium text-green-400">LIVE</span>
+                        <span class="text-xs text-green-300/60 mono" id="uptime">00:00:00</span>
+                    </div>
+                    
+                    <!-- Evidence Profile Selector -->
+                    <div class="relative">
+                        <button onclick="toggleProfileMenu()" class="flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-white/10 transition-all">
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                            </svg>
+                            <span class="text-sm font-medium" id="currentProfile">Strict Science</span>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div id="profileMenu" class="hidden absolute right-0 mt-2 w-64 rounded-xl shadow-2xl overflow-hidden z-50 bg-slate-900 border border-slate-700">
+                            <div class="p-3 border-b border-slate-700 bg-slate-800">
+                                <p class="text-xs text-slate-400 uppercase tracking-wider">Evidence Source Profile</p>
+                            </div>
+                            <div class="p-2 bg-slate-900">
+                                <button onclick="selectProfile('strict')" class="profile-option w-full flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all text-left">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-sm">Strict Science</p>
+                                        <p class="text-xs text-slate-400">Peer-reviewed + major health orgs only</p>
+                                    </div>
+                                </button>
+                                <button onclick="selectProfile('institutional')" class="profile-option w-full flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all text-left">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-sm">Institutional + Investigative</p>
+                                        <p class="text-xs text-slate-400">Add reputable journalism sources</p>
+                                    </div>
+                                </button>
+                                <button onclick="selectProfile('broad')" class="profile-option w-full flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800 transition-all text-left">
+                                    <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-sm">Broad</p>
+                                        <p class="text-xs text-slate-400">Include independent researchers & preprints</p>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <button onclick="toggleNotifications()" class="relative p-2 rounded-lg glass hover:bg-white/10 transition-all">
+                        <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span id="notifBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center">3</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        
+        <!-- Dashboard Section -->
+        <section id="section-dashboard" class="section-content">
+            <!-- Hero Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <!-- Claims Tracked -->
+                <div class="glass rounded-2xl p-5 relative overflow-hidden group claim-card">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-green-400 font-medium flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                                +127
+                            </span>
+                        </div>
+                        <p class="text-3xl font-bold mono" id="statClaims">12,847</p>
+                        <p class="text-sm text-slate-400 mt-1">Active Claims</p>
+                    </div>
+                </div>
+
+                <!-- Evidence Collected -->
+                <div class="glass rounded-2xl p-5 relative overflow-hidden group claim-card">
+                    <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-green-400 font-medium flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                                +2.4k
+                            </span>
+                        </div>
+                        <p class="text-3xl font-bold mono" id="statEvidence">89,432</p>
+                        <p class="text-sm text-slate-400 mt-1">Evidence Items</p>
+                    </div>
+                </div>
+
+                <!-- Corrections Sent -->
+                <div class="glass rounded-2xl p-5 relative overflow-hidden group claim-card">
+                    <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-green-400 font-medium flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                                +892
+                            </span>
+                        </div>
+                        <p class="text-3xl font-bold mono" id="statCorrections">1.2M</p>
+                        <p class="text-sm text-slate-400 mt-1">Corrections Sent</p>
+                    </div>
+                </div>
+
+                <!-- Users Reached -->
+                <div class="glass rounded-2xl p-5 relative overflow-hidden group claim-card">
+                    <div class="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-green-400 font-medium flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                                +45k
+                            </span>
+                        </div>
+                        <p class="text-3xl font-bold mono" id="statUsers">8.4M</p>
+                        <p class="text-sm text-slate-400 mt-1">Users Reached</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Dashboard Grid -->
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Left Column - Live Feed & Charts -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Real-Time Processing Pipeline -->
+                    <div class="glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 class="text-lg font-semibold">Real-Time Processing Pipeline</h2>
+                                <p class="text-sm text-slate-400">Powered by Pathway • Live data streams</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                <span class="text-xs text-slate-400 mono" id="processingRate">2,847 claims/hr</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Pipeline Visualization -->
+                        <div class="relative">
+                            <div class="flex items-center justify-between">
+                                <!-- Ingestion -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20 animate-pulse-glow">
+                                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs font-medium mt-2">Ingest</p>
+                                    <p class="text-[10px] text-slate-500 mono" id="ingestCount">1.2k/s</p>
+                                </div>
+                                
+                                <!-- Arrow with data particles -->
+                                <div class="flex-1 h-1 mx-2 relative overflow-hidden rounded-full bg-slate-700">
+                                    <div class="absolute inset-0 stream-line"></div>
+                                </div>
+                                
+                                <!-- Clustering -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs font-medium mt-2">Cluster</p>
+                                    <p class="text-[10px] text-slate-500 mono">847 claims</p>
+                                </div>
+                                
+                                <div class="flex-1 h-1 mx-2 relative overflow-hidden rounded-full bg-slate-700">
+                                    <div class="absolute inset-0 stream-line" style="animation-delay: -0.5s;"></div>
+                                </div>
+                                
+                                <!-- Evidence Match -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs font-medium mt-2">Evidence</p>
+                                    <p class="text-[10px] text-slate-500 mono">12.4k sources</p>
+                                </div>
+                                
+                                <div class="flex-1 h-1 mx-2 relative overflow-hidden rounded-full bg-slate-700">
+                                    <div class="absolute inset-0 stream-line" style="animation-delay: -1s;"></div>
+                                </div>
+                                
+                                <!-- Score -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/20">
+                                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs font-medium mt-2">Score</p>
+                                    <p class="text-[10px] text-slate-500 mono">Real-time</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Metrics -->
+                        <div class="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/5">
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-blue-400 mono" id="metricLatency">47</p>
+                                <p class="text-[10px] text-slate-500 uppercase tracking-wider">Avg Latency (ms)</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-indigo-400 mono" id="metricThroughput">2.8k</p>
+                                <p class="text-[10px] text-slate-500 uppercase tracking-wider">Claims/Hour</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-purple-400 mono" id="metricAccuracy">94.7%</p>
+                                <p class="text-[10px] text-slate-500 uppercase tracking-wider">Clustering Acc</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-green-400 mono" id="metricUptime">99.97%</p>
+                                <p class="text-[10px] text-slate-500 uppercase tracking-wider">Uptime</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Claim Velocity Chart -->
+                    <div class="glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold">Claim Velocity & Credibility Trends</h2>
+                                <p class="text-sm text-slate-400">Last 24 hours • Auto-updating</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-400">24h</button>
+                                <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5">7d</button>
+                                <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5">30d</button>
+                            </div>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="velocityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Top Claims & Activity -->
+                <div class="space-y-6">
+                    <!-- Top Spreading Claims -->
+                    <div class="glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold">🔥 Trending Claims</h2>
+                            <button class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">View All →</button>
+                        </div>
+                        <div class="space-y-3" id="trendingClaims">
+                            <!-- Claims will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Live Activity Feed -->
+                    <div class="glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-lg font-semibold">Live Activity</h2>
+                                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3 max-h-80 overflow-y-auto hide-scrollbar" id="activityFeed">
+                            <!-- Activities will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Platform Distribution -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">Source Platforms</h2>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-[#1da1f2]/20 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-[#1da1f2]" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">X / Twitter</span>
+                                        <span class="text-xs text-slate-400 mono">42%</span>
+                                    </div>
+                                    <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-[#1da1f2] rounded-full evidence-bar" style="width: 42%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-[#ff4500]/20 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-[#ff4500]" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">Reddit</span>
+                                        <span class="text-xs text-slate-400 mono">28%</span>
+                                    </div>
+                                    <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-[#ff4500] rounded-full evidence-bar" style="width: 28%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-[#ff0000]/20 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-[#ff0000]" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">YouTube</span>
+                                        <span class="text-xs text-slate-400 mono">18%</span>
+                                    </div>
+                                    <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-[#ff0000] rounded-full evidence-bar" style="width: 18%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">News Sites</span>
+                                        <span class="text-xs text-slate-400 mono">12%</span>
+                                    </div>
+                                    <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-indigo-500 rounded-full evidence-bar" style="width: 12%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Claims Section -->
+        <section id="section-claims" class="section-content hidden">
+            <!-- Search & Filters -->
+            <div class="glass rounded-2xl p-6 mb-6">
+                <div class="flex flex-col lg:flex-row gap-4">
+                    <!-- Search -->
+                    <div class="flex-1 relative">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" id="claimSearch" placeholder="Search claims... (e.g., 'vaccine', 'election', 'climate')" class="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-white placeholder:text-slate-500">
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="flex flex-wrap gap-2">
+                        <!-- Topic Filter -->
+                        <select class="px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 text-sm focus:border-indigo-500 outline-none cursor-pointer">
+                            <option value="">All Topics</option>
+                            <option value="health">🏥 Health</option>
+                            <option value="politics">🏛️ Politics</option>
+                            <option value="climate">🌍 Climate</option>
+                            <option value="tech">💻 Technology</option>
+                            <option value="finance">💰 Finance</option>
+                        </select>
+                        
+                        <!-- Credibility Filter -->
+                        <select class="px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 text-sm focus:border-indigo-500 outline-none cursor-pointer">
+                            <option value="">All Credibility</option>
+                            <option value="high">🟢 High (75-100%)</option>
+                            <option value="medium">🟡 Medium (50-75%)</option>
+                            <option value="low">🟠 Low (25-50%)</option>
+                            <option value="dubious">🔴 Dubious (0-25%)</option>
+                        </select>
+                        
+                        <!-- Platform Filter -->
+                        <select class="px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 text-sm focus:border-indigo-500 outline-none cursor-pointer">
+                            <option value="">All Platforms</option>
+                            <option value="twitter">X / Twitter</option>
+                            <option value="reddit">Reddit</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="news">News</option>
+                        </select>
+                        
+                        <!-- Sort -->
+                        <select class="px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 text-sm focus:border-indigo-500 outline-none cursor-pointer">
+                            <option value="trending">🔥 Trending</option>
+                            <option value="recent">🕐 Most Recent</option>
+                            <option value="credibility">📊 By Credibility</option>
+                            <option value="velocity">⚡ By Velocity</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claims Grid -->
+            <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4" id="claimsGrid">
+                <!-- Claims will be populated by JS -->
+            </div>
+
+            <!-- Load More -->
+            <div class="flex justify-center mt-8">
+                <button class="px-6 py-3 rounded-xl glass hover:bg-white/10 transition-all font-medium flex items-center gap-2">
+                    <svg class="w-5 h-5 animate-spin hidden" id="loadingSpinner" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Load More Claims
+                </button>
+            </div>
+        </section>
+
+        <!-- Evidence Lab Section -->
+        <section id="section-evidence" class="section-content hidden">
+            <div class="grid lg:grid-cols-5 gap-6">
+                <!-- Evidence Sources List -->
+                <div class="lg:col-span-2 glass rounded-2xl p-6">
+                    <h2 class="text-lg font-semibold mb-4">Evidence Sources</h2>
+                    <p class="text-sm text-slate-400 mb-4">Curated sources with quality scoring</p>
+                    
+                    <div class="space-y-3 max-h-[600px] overflow-y-auto hide-scrollbar" id="evidenceSources">
+                        <!-- Sources populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Evidence Analyzer -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- Query Interface -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">🔬 Evidence Analyzer</h2>
+                        <p class="text-sm text-slate-400 mb-4">Ask questions about any claim to see supporting and refuting evidence</p>
+                        
+                        <div class="relative mb-4">
+                            <textarea id="evidenceQuery" rows="3" placeholder="Enter a claim to analyze... (e.g., 'Vitamin D supplements prevent COVID-19 infection')" class="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-white placeholder:text-slate-500 resize-none"></textarea>
+                        </div>
+                        
+                        <button onclick="analyzeEvidence()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 font-medium hover:from-indigo-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                            Analyze Evidence
+                        </button>
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div class="glass rounded-2xl p-6" id="analysisResults">
+                        <div class="text-center py-12 text-slate-400">
+                            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                            <p class="text-lg font-medium mb-2">Ready to Analyze</p>
+                            <p class="text-sm">Enter a claim above to see evidence analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Corrections Section -->
+        <section id="section-corrections" class="section-content hidden">
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Correction Preview -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold mb-2">📬 Correction Preview</h2>
+                        <p class="text-sm text-slate-400 mb-6">Preview how corrections appear to users</p>
+                        
+                        <!-- Sample Correction Card -->
+                        <div class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-2xl border border-white/10 overflow-hidden">
+                            <!-- Header -->
+                            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">New Evidence Available</p>
+                                        <p class="text-xs text-slate-400">About a claim you saw 2 hours ago</p>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-slate-500">Just now</span>
+                            </div>
+                            
+                            <!-- Content -->
+                            <div class="p-6">
+                                <!-- Original Claim -->
+                                <div class="mb-6">
+                                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">You saw this claim</p>
+                                    <div class="p-4 rounded-xl bg-slate-700/30 border-l-4 border-orange-500">
+                                        <p class="text-sm">"A new study proves that drinking coffee prevents all forms of cancer"</p>
+                                        <p class="text-xs text-slate-500 mt-2">Shared 847,000 times across platforms</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Arrow -->
+                                <div class="flex justify-center mb-6">
+                                    <div class="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <!-- Updated Evidence -->
+                                <div class="mb-6">
+                                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Since then, new evidence has emerged</p>
+                                    <div class="p-4 rounded-xl bg-slate-700/30 border-l-4 border-green-500">
+                                        <div class="flex items-start justify-between mb-3">
+                                            <div>
+                                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">MISLEADING</span>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-2xl font-bold text-orange-400">32%</p>
+                                                <p class="text-xs text-slate-500">Credibility</p>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm text-slate-300 mb-3">The study referenced has significant limitations. While some research suggests coffee consumption may be associated with reduced risk of certain cancers, it does not "prevent all forms of cancer."</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="text-xs px-2 py-1 rounded-full bg-slate-600/50 text-slate-300">📚 3 peer-reviewed studies</span>
+                                            <span class="text-xs px-2 py-1 rounded-full bg-slate-600/50 text-slate-300">🏥 WHO statement</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Actions -->
+                                <div class="flex items-center justify-between pt-4 border-t border-white/5">
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition-all">
+                                            👍 Helpful
+                                        </button>
+                                        <button class="px-4 py-2 rounded-lg bg-slate-600/20 text-slate-400 text-sm font-medium hover:bg-slate-600/30 transition-all">
+                                            👎 Not helpful
+                                        </button>
+                                    </div>
+                                    <button class="text-sm text-indigo-400 hover:text-indigo-300 font-medium">
+                                        View full evidence →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Correction Stats -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">Correction Effectiveness</h2>
+                        <div class="h-64">
+                            <canvas id="correctionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Correction Settings -->
+                <div class="space-y-6">
+                    <!-- Delivery Preferences -->
+                    <div class="glass rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">⚙️ Your Preferences</h2>
+                        
+                        <div class="space-y-4">
+                            <!-- Topics -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-300 block mb-2">Topics to follow</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">🏥 Health</button>
+                                    <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">🏛️ Politics</button>
+                                    <button class="px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-white/10 hover:bg-white/5">🌍 Climate</button>
+                                    <button class="px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-white/10 hover:bg-white/5">💻 Tech</button>
+                                    <button class="px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-white/10 hover:bg-white/5">💰 Finance</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Frequency -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-300 block mb-2">Notification frequency</label>
+                                <select class="w-full px-4 py-2.5 rounded-xl bg-slate-800/50 border border-white/10 text-sm focus:border-indigo-500 outline-none">
+                                    <option>Real-time (instant)</option>
+                                    <option>Daily digest</option>
+                                    <option>Weekly summary</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Sensitivity -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-300 block mb-2">Sensitivity threshold</label>
+                                <input type="range" min="0" max="100" value="50" class="w-full">
+                                <div class="flex justify-between text-xs text-slate-500 mt-1">
+                                    <span>All changes</span>
+                                    <span>Major only</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Channels -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-300 block mb-2">Delivery channels</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" checked class="w-4 h-4 rounded bg-slate-700 border-white/10 text-indigo-500 focus:ring-indigo-500">
+                                        <span class="text-sm">In-app notifications</span>
+                                    </label>
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" class="w-4 h-4 rounded bg-slate-700 border-white/10 text-indigo-500 focus:ring-indigo-500">
+                                        <span class="text-sm">Email</span>
+                                    </label>
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" class="w-4 h-4 rounded bg-slate-700 border-white/10 text-indigo-500 focus:ring-indigo-500">
+                                        <span class="text-sm">Push notifications</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 font-medium hover:from-indigo-600 hover:to-purple-600 transition-all">
+                            Save Preferences
+                        </button>
+                    </div>
+
+                    <!-- Privacy Notice -->
+                    <div class="glass rounded-2xl p-6 border border-green-500/20 bg-green-500/5">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-green-400 mb-1">Privacy Protected</h3>
+                                <p class="text-sm text-slate-400">Your data is anonymized. We never access private messages, and you can opt-out anytime with 2 clicks.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Claim Detail Modal -->
+    <div id="claimModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 modal-backdrop" onclick="closeClaimModal()"></div>
+        <div class="absolute inset-4 md:inset-8 lg:inset-16 glass rounded-3xl overflow-hidden flex flex-col animate-slide-in-up">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-white/5">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold" id="modalClaimTitle">Claim Details</h2>
+                        <p class="text-sm text-slate-400" id="modalClaimMeta">Loading...</p>
+                    </div>
+                </div>
+                <button onclick="closeClaimModal()" class="p-2 rounded-lg hover:bg-white/10 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Content -->
+            <div class="flex-1 overflow-y-auto p-6" id="modalContent">
+                <!-- Content populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+        <!-- Toasts will be added here -->
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobileMenu" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 modal-backdrop" onclick="toggleMobileMenu()"></div>
+        <div class="absolute top-0 right-0 w-72 h-full bg-slate-900 border-l border-white/10 p-6 animate-slide-in-right">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-lg font-semibold gradient-text">Menu</h2>
+                <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-white/10 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <nav class="space-y-2">
+                <button onclick="showSection('dashboard'); toggleMobileMenu();" class="mobile-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:bg-white/10 bg-white/10 text-white" data-section="dashboard">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                    </svg>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+                <button onclick="showSection('claims'); toggleMobileMenu();" class="mobile-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:bg-white/10 text-slate-400" data-section="claims">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <span class="font-medium">Live Claims</span>
+                </button>
+                <button onclick="showSection('evidence'); toggleMobileMenu();" class="mobile-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:bg-white/10 text-slate-400" data-section="evidence">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    <span class="font-medium">Evidence Lab</span>
+                </button>
+                <button onclick="showSection('corrections'); toggleMobileMenu();" class="mobile-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:bg-white/10 text-slate-400" data-section="corrections">
+                    <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="font-medium">Corrections</span>
+                </button>
+            </nav>
+            <div class="mt-8 pt-8 border-t border-white/10">
+                <p class="text-xs text-slate-500 mb-4">Evidence Profile</p>
+                <div class="space-y-2">
+                    <button onclick="selectProfile('strict'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-all text-indigo-400">
+                        🔬 Strict Science
+                    </button>
+                    <button onclick="selectProfile('institutional'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-all text-slate-400">
+                        🏛️ Institutional + Investigative
+                    </button>
+                    <button onclick="selectProfile('broad'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-all text-slate-400">
+                        🌐 Broad
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-white/10 px-2 py-2 safe-area-pb">
+        <div class="flex items-center justify-around">
+            <button onclick="showSection('dashboard')" class="mobile-bottom-nav flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all text-indigo-400" data-section="dashboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                </svg>
+                <span class="text-[10px] font-medium">Dashboard</span>
+            </button>
+            <button onclick="showSection('claims')" class="mobile-bottom-nav flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all text-slate-400" data-section="claims">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <span class="text-[10px] font-medium">Claims</span>
+            </button>
+            <button onclick="showSection('evidence')" class="mobile-bottom-nav flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all text-slate-400" data-section="evidence">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                <span class="text-[10px] font-medium">Evidence</span>
+            </button>
+            <button onclick="showSection('corrections')" class="mobile-bottom-nav flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all text-slate-400" data-section="corrections">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-[10px] font-medium">Corrections</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-white/5 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-semibold gradient-text">VeriSmart</span>
+                </div>
+                <p class="text-sm text-slate-400">© 2026 Aryan & Khushboo. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>
+                    <a href="#" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Terms of Service</a>
+                    <a href="#" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Documentation</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ============================================
+        // DATA & STATE
+        // ============================================
+        
+        const claims = [
+            {
+                id: 1,
+                text: "New study shows that 5G towers are linked to increased COVID-19 cases",
+                credibility: 8,
+                category: "health",
+                platform: "twitter",
+                velocity: 12400,
+                reach: 2340000,
+                trend: "up",
+                evidence: { supporting: 0, refuting: 12, uncertain: 2 },
+                lastUpdated: "2 min ago"
+            },
+            {
+                id: 2,
+                text: "Pfizer vaccine has been proven 95% effective against severe COVID-19 symptoms",
+                credibility: 94,
+                category: "health",
+                platform: "news",
+                velocity: 8900,
+                reach: 5600000,
+                trend: "stable",
+                evidence: { supporting: 47, refuting: 3, uncertain: 8 },
+                lastUpdated: "5 min ago"
+            },
+            {
+                id: 3,
+                text: "Climate scientists confirm 2024 is on track to be the hottest year on record",
+                credibility: 91,
+                category: "climate",
+                platform: "twitter",
+                velocity: 6200,
+                reach: 1890000,
+                trend: "up",
+                evidence: { supporting: 34, refuting: 2, uncertain: 5 },
+                lastUpdated: "8 min ago"
+            },
+            {
+                id: 4,
+                text: "Electoral ballots were found dumped in a river in Pennsylvania",
+                credibility: 15,
+                category: "politics",
+                platform: "reddit",
+                velocity: 24000,
+                reach: 4200000,
+                trend: "up",
+                evidence: { supporting: 1, refuting: 18, uncertain: 3 },
+                lastUpdated: "12 min ago"
+            },
+            {
+                id: 5,
+                text: "Drinking warm lemon water every morning can cure diabetes",
+                credibility: 4,
+                category: "health",
+                platform: "youtube",
+                velocity: 8700,
+                reach: 1240000,
+                trend: "down",
+                evidence: { supporting: 0, refuting: 24, uncertain: 1 },
+                lastUpdated: "15 min ago"
+            },
+            {
+                id: 6,
+                text: "Federal Reserve announces unexpected 0.25% interest rate cut",
+                credibility: 88,
+                category: "finance",
+                platform: "news",
+                velocity: 15600,
+                reach: 3400000,
+                trend: "stable",
+                evidence: { supporting: 28, refuting: 0, uncertain: 2 },
+                lastUpdated: "18 min ago"
+            },
+            {
+                id: 7,
+                text: "AI models can now detect early-stage cancer with 99% accuracy",
+                credibility: 62,
+                category: "tech",
+                platform: "twitter",
+                velocity: 4300,
+                reach: 890000,
+                trend: "up",
+                evidence: { supporting: 8, refuting: 4, uncertain: 12 },
+                lastUpdated: "22 min ago"
+            },
+            {
+                id: 8,
+                text: "New Antarctic ice sheet data suggests sea level rise predictions were underestimated",
+                credibility: 78,
+                category: "climate",
+                platform: "news",
+                velocity: 2100,
+                reach: 560000,
+                trend: "stable",
+                evidence: { supporting: 15, refuting: 3, uncertain: 9 },
+                lastUpdated: "25 min ago"
+            }
+        ];
+
+        const evidenceSources = [
+            { name: "PubMed", type: "Scientific", quality: 10, icon: "📚", color: "indigo" },
+            { name: "WHO", type: "Institutional", quality: 9, icon: "🏥", color: "blue" },
+            { name: "CDC", type: "Institutional", quality: 9, icon: "🏛️", color: "blue" },
+            { name: "Nature", type: "Scientific", quality: 10, icon: "🔬", color: "green" },
+            { name: "Reuters", type: "Journalism", quality: 8, icon: "📰", color: "purple" },
+            { name: "AP News", type: "Journalism", quality: 8, icon: "📰", color: "purple" },
+            { name: "arXiv", type: "Preprint", quality: 6, icon: "📄", color: "orange" },
+            { name: "Snopes", type: "Fact-check", quality: 7, icon: "✅", color: "teal" },
+            { name: "PolitiFact", type: "Fact-check", quality: 7, icon: "⚖️", color: "teal" }
+        ];
+
+        const activityTypes = [
+            { type: "new_claim", icon: "📢", text: "New claim detected", color: "blue" },
+            { type: "score_update", icon: "📊", text: "Score updated", color: "purple" },
+            { type: "evidence_added", icon: "📚", text: "Evidence added", color: "green" },
+            { type: "correction_sent", icon: "✉️", text: "Corrections sent", color: "indigo" },
+            { type: "alert", icon: "🚨", text: "Viral claim alert", color: "red" }
+        ];
+
+        let startTime = Date.now();
+        let currentProfile = 'strict';
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDashboard();
+            initializeCharts();
+            startLiveUpdates();
+            populateClaims();
+            populateEvidenceSources();
+        });
+
+        function initializeDashboard() {
+            // Populate trending claims
+            updateTrendingClaims();
+            // Start activity feed
+            generateActivity();
+            // Update uptime
+            setInterval(updateUptime, 1000);
+        }
+
+        // ============================================
+        // NAVIGATION
+        // ============================================
+
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+            // Show selected section
+            document.getElementById(`section-${sectionName}`).classList.remove('hidden');
+            
+            // Update desktop nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.section === sectionName) {
+                    btn.classList.remove('text-slate-400');
+                    btn.classList.add('text-white', 'bg-white/10');
+                } else {
+                    btn.classList.add('text-slate-400');
+                    btn.classList.remove('text-white', 'bg-white/10');
+                }
+            });
+            
+            // Update mobile nav buttons
+            document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+                if (btn.dataset.section === sectionName) {
+                    btn.classList.remove('text-slate-400');
+                    btn.classList.add('text-white', 'bg-white/10');
+                } else {
+                    btn.classList.add('text-slate-400');
+                    btn.classList.remove('text-white', 'bg-white/10');
+                }
+            });
+            
+            // Update mobile bottom nav buttons
+            document.querySelectorAll('.mobile-bottom-nav').forEach(btn => {
+                if (btn.dataset.section === sectionName) {
+                    btn.classList.remove('text-slate-400');
+                    btn.classList.add('text-indigo-400');
+                } else {
+                    btn.classList.add('text-slate-400');
+                    btn.classList.remove('text-indigo-400');
+                }
+            });
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+            document.body.style.overflow = menu.classList.contains('hidden') ? 'auto' : 'hidden';
+        }
+
+        // ============================================
+        // CHARTS
+        // ============================================
+
+        let velocityChart, correctionChart;
+
+        function initializeCharts() {
+            // Velocity Chart
+            const vCtx = document.getElementById('velocityChart').getContext('2d');
+            const gradient = vCtx.createLinearGradient(0, 0, 0, 250);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+            const gradient2 = vCtx.createLinearGradient(0, 0, 0, 250);
+            gradient2.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+            gradient2.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+            velocityChart = new Chart(vCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${23-i}h`).reverse(),
+                    datasets: [{
+                        label: 'Claims/hour',
+                        data: [1200, 1400, 1100, 980, 850, 720, 680, 890, 1200, 1800, 2400, 2800, 3100, 2900, 2700, 2500, 2800, 3200, 3500, 3100, 2800, 2600, 2400, 2847],
+                        borderColor: '#6366f1',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#6366f1',
+                        borderWidth: 2
+                    }, {
+                        label: 'Corrections/hour',
+                        data: [400, 500, 380, 320, 280, 240, 220, 300, 420, 620, 840, 980, 1100, 1020, 950, 880, 1000, 1150, 1280, 1100, 980, 910, 840, 892],
+                        borderColor: '#10b981',
+                        backgroundColor: gradient2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#10b981',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'end',
+                            labels: {
+                                color: '#94a3b8',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 20,
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.03)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.03)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Correction Chart
+            const cCtx = document.getElementById('correctionChart');
+            if (cCtx) {
+                correctionChart = new Chart(cCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Belief Reduction', 'User Satisfaction', 'Engagement Rate', 'Reshare Reduction'],
+                        datasets: [{
+                            label: 'Before Correction',
+                            data: [0, 0, 0, 0],
+                            backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                            borderRadius: 6
+                        }, {
+                            label: 'After Correction',
+                            data: [67, 84, 72, 58],
+                            backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { color: '#94a3b8', usePointStyle: true }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#64748b', font: { size: 10 } }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.03)' },
+                                ticks: { color: '#64748b', callback: v => v + '%' },
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ============================================
+        // LIVE UPDATES
+        // ============================================
+
+        function startLiveUpdates() {
+            // Update stats every 3 seconds
+            setInterval(() => {
+                animateStatUpdate('statClaims', Math.floor(Math.random() * 50) + 12800);
+                animateStatUpdate('statEvidence', Math.floor(Math.random() * 100) + 89400);
+            }, 3000);
+
+            // Add new activities every 5 seconds
+            setInterval(() => {
+                generateActivity();
+            }, 5000);
+
+            // Update chart data every 10 seconds
+            setInterval(() => {
+                if (velocityChart) {
+                    const newValue = Math.floor(Math.random() * 500) + 2500;
+                    velocityChart.data.datasets[0].data.push(newValue);
+                    velocityChart.data.datasets[0].data.shift();
+                    velocityChart.data.datasets[1].data.push(Math.floor(newValue * 0.35));
+                    velocityChart.data.datasets[1].data.shift();
+                    velocityChart.update('none');
+                }
+            }, 10000);
+
+            // Random toast notifications
+            setInterval(() => {
+                if (Math.random() > 0.6) {
+                    showRandomToast();
+                }
+            }, 8000);
+
+            // Update processing metrics
+            setInterval(() => {
+                document.getElementById('metricLatency').textContent = Math.floor(Math.random() * 20) + 40;
+                document.getElementById('metricThroughput').textContent = (Math.random() * 0.5 + 2.5).toFixed(1) + 'k';
+            }, 4000);
+        }
+
+        function animateStatUpdate(elementId, newValue) {
+            const el = document.getElementById(elementId);
+            const currentValue = parseInt(el.textContent.replace(/,/g, '').replace(/[^\d]/g, '')) || 0;
+            
+            // Format based on size
+            let formatted;
+            if (newValue >= 1000000) {
+                formatted = (newValue / 1000000).toFixed(1) + 'M';
+            } else if (newValue >= 1000) {
+                formatted = newValue.toLocaleString();
+            } else {
+                formatted = newValue.toString();
+            }
+            
+            el.classList.add('text-green-400');
+            el.textContent = formatted;
+            
+            setTimeout(() => {
+                el.classList.remove('text-green-400');
+            }, 500);
+        }
+
+        function updateUptime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('uptime').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // ============================================
+        // TRENDING CLAIMS
+        // ============================================
+
+        function updateTrendingClaims() {
+            const container = document.getElementById('trendingClaims');
+            const sortedClaims = [...claims].sort((a, b) => b.velocity - a.velocity).slice(0, 5);
+            
+            container.innerHTML = sortedClaims.map((claim, i) => `
+                <div class="p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 cursor-pointer transition-all claim-card" onclick="openClaimModal(${claim.id})">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg ${getCredibilityBg(claim.credibility)} flex items-center justify-center flex-shrink-0">
+                            <span class="text-xs font-bold text-white">${claim.credibility}%</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-slate-200 line-clamp-2">${claim.text}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[10px] text-slate-500">${getPlatformIcon(claim.platform)}</span>
+                                <span class="text-[10px] text-slate-500">⚡ ${formatNumber(claim.velocity)}/hr</span>
+                                <span class="text-[10px] ${claim.trend === 'up' ? 'text-red-400' : 'text-green-400'}">${claim.trend === 'up' ? '📈' : '📉'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // ACTIVITY FEED
+        // ============================================
+
+        function generateActivity() {
+            const container = document.getElementById('activityFeed');
+            const activity = activityTypes[Math.floor(Math.random() * activityTypes.length)];
+            const claim = claims[Math.floor(Math.random() * claims.length)];
+            
+            const activityEl = document.createElement('div');
+            activityEl.className = 'flex items-start gap-3 p-3 rounded-xl bg-slate-800/30 animate-slide-in-up';
+            activityEl.innerHTML = `
+                <div class="w-8 h-8 rounded-lg bg-${activity.color}-500/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm">${activity.icon}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm"><span class="font-medium text-${activity.color}-400">${activity.text}</span></p>
+                    <p class="text-xs text-slate-500 truncate">${claim.text.substring(0, 50)}...</p>
+                    <p class="text-[10px] text-slate-600 mt-1">Just now</p>
+                </div>
+            `;
+            
+            container.insertBefore(activityEl, container.firstChild);
+            
+            // Keep only last 10 activities
+            while (container.children.length > 10) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // ============================================
+        // CLAIMS GRID
+        // ============================================
+
+        function populateClaims() {
+            const grid = document.getElementById('claimsGrid');
+            grid.innerHTML = claims.map(claim => createClaimCard(claim)).join('');
+        }
+
+        function createClaimCard(claim) {
+            return `
+                <div class="glass rounded-2xl overflow-hidden claim-card cursor-pointer" onclick="openClaimModal(${claim.id})">
+                    <div class="p-5">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs px-2 py-1 rounded-full ${getCategoryStyle(claim.category)}">${getCategoryLabel(claim.category)}</span>
+                            <span class="text-xs text-slate-500">${claim.lastUpdated}</span>
+                        </div>
+                        
+                        <!-- Claim Text -->
+                        <p class="text-sm font-medium mb-4 line-clamp-3">${claim.text}</p>
+                        
+                        <!-- Score -->
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="relative">
+                                <svg class="w-16 h-16 score-ring" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                                    <circle cx="50" cy="50" r="40" fill="none" stroke="${getCredibilityColor(claim.credibility)}" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="${251.2 - (251.2 * claim.credibility / 100)}"/>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-lg font-bold" style="color: ${getCredibilityColor(claim.credibility)}">${claim.credibility}%</span>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-xs text-slate-400 mb-1">Credibility Score</p>
+                                <p class="text-sm font-medium ${getCredibilityClass(claim.credibility)}">${getCredibilityLabel(claim.credibility)}</p>
+                                <p class="text-xs text-slate-500 mt-1">${claim.evidence.supporting + claim.evidence.refuting + claim.evidence.uncertain} evidence items</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Evidence Breakdown -->
+                        <div class="flex gap-1 h-2 rounded-full overflow-hidden mb-4">
+                            <div class="bg-green-500 transition-all" style="width: ${getEvidencePercent(claim, 'supporting')}%"></div>
+                            <div class="bg-red-500 transition-all" style="width: ${getEvidencePercent(claim, 'refuting')}%"></div>
+                            <div class="bg-slate-500 transition-all" style="width: ${getEvidencePercent(claim, 'uncertain')}%"></div>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="flex items-center justify-between text-xs text-slate-400">
+                            <div class="flex items-center gap-2">
+                                <span>${getPlatformIcon(claim.platform)}</span>
+                                <span>${formatNumber(claim.reach)} reached</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="${claim.trend === 'up' ? 'text-red-400' : 'text-green-400'}">
+                                    ${claim.trend === 'up' ? '↑' : '↓'}
+                                </span>
+                                <span>${formatNumber(claim.velocity)}/hr</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // EVIDENCE SOURCES
+        // ============================================
+
+        function populateEvidenceSources() {
+            const container = document.getElementById('evidenceSources');
+            container.innerHTML = evidenceSources.map(source => `
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all cursor-pointer">
+                    <div class="w-10 h-10 rounded-lg bg-${source.color}-500/20 flex items-center justify-center text-xl">
+                        ${source.icon}
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-sm">${source.name}</p>
+                        <p class="text-xs text-slate-500">${source.type}</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        ${Array(source.quality).fill().map(() => '<div class="w-1.5 h-4 rounded-full bg-green-500"></div>').join('')}
+                        ${Array(10 - source.quality).fill().map(() => '<div class="w-1.5 h-4 rounded-full bg-slate-700"></div>').join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // EVIDENCE ANALYZER
+        // ============================================
+
+        function analyzeEvidence() {
+            const query = document.getElementById('evidenceQuery').value;
+            if (!query.trim()) return;
+
+            const resultsContainer = document.getElementById('analysisResults');
+            
+            // Show loading
+            resultsContainer.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+                    <p class="text-lg font-medium mb-2">Analyzing Evidence...</p>
+                    <p class="text-sm text-slate-400">Querying ${evidenceSources.length} sources via Pathway RAG pipeline</p>
+                </div>
+            `;
+
+            // Simulate analysis
+            setTimeout(() => {
+                const score = Math.floor(Math.random() * 60) + 20;
+                resultsContainer.innerHTML = `
+                    <div class="space-y-6">
+                        <!-- Score Header -->
+                        <div class="flex items-center gap-6 p-6 rounded-2xl bg-gradient-to-r from-slate-800/50 to-slate-900/50 border border-white/5">
+                            <div class="relative">
+                                <svg class="w-24 h-24 score-ring" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                                    <circle cx="50" cy="50" r="40" fill="none" stroke="${getCredibilityColor(score)}" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="${251.2 - (251.2 * score / 100)}" style="animation: score-fill 1s ease-out forwards"/>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-2xl font-bold" style="color: ${getCredibilityColor(score)}">${score}%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xl font-semibold mb-1">${getCredibilityLabel(score)}</p>
+                                <p class="text-sm text-slate-400 mb-2">Based on ${Math.floor(Math.random() * 20) + 5} evidence sources</p>
+                                <p class="text-xs text-slate-500">Profile: <span class="text-indigo-400">${currentProfile === 'strict' ? 'Strict Science' : currentProfile === 'institutional' ? 'Institutional' : 'Broad'}</span></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Evidence Breakdown -->
+                        <div>
+                            <h3 class="font-semibold mb-3 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 text-sm">✓</span>
+                                Supporting Evidence
+                            </h3>
+                            <div class="space-y-2">
+                                <div class="p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-medium text-green-400">PubMed Study • 2024</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">+12 points</span>
+                                    </div>
+                                    <p class="text-sm text-slate-300">Randomized controlled trial with 2,400 participants showing moderate correlation...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-semibold mb-3 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400 text-sm">✗</span>
+                                Refuting Evidence
+                            </h3>
+                            <div class="space-y-2">
+                                <div class="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-medium text-red-400">WHO Statement • 2024</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">-18 points</span>
+                                    </div>
+                                    <p class="text-sm text-slate-300">Official position states insufficient evidence to support this claim at population level...</p>
+                                </div>
+                                <div class="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-medium text-red-400">Meta-analysis • Nature • 2023</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">-15 points</span>
+                                    </div>
+                                    <p class="text-sm text-slate-300">Analysis of 47 studies found no statistically significant effect when controlling for confounders...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Score Calculation -->
+                        <div class="p-4 rounded-xl bg-slate-800/50 border border-white/5">
+                            <h3 class="font-semibold mb-3 text-sm">Score Calculation</h3>
+                            <div class="space-y-2 text-sm mono">
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Baseline (Health Claim)</span>
+                                    <span>30%</span>
+                                </div>
+                                <div class="flex justify-between text-green-400">
+                                    <span>+ PubMed RCT Study</span>
+                                    <span>+12%</span>
+                                </div>
+                                <div class="flex justify-between text-red-400">
+                                    <span>− WHO Official Statement</span>
+                                    <span>-18%</span>
+                                </div>
+                                <div class="flex justify-between text-red-400">
+                                    <span>− Nature Meta-analysis</span>
+                                    <span>-15%</span>
+                                </div>
+                                <div class="flex justify-between text-purple-400">
+                                    <span>± Uncertainty adjustment</span>
+                                    <span>+${score - 30 + 18 + 15 - 12}%</span>
+                                </div>
+                                <div class="border-t border-white/10 pt-2 flex justify-between font-bold text-white">
+                                    <span>Final Score</span>
+                                    <span>${score}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        // ============================================
+        // CLAIM MODAL
+        // ============================================
+
+        function openClaimModal(claimId) {
+            const claim = claims.find(c => c.id === claimId);
+            if (!claim) return;
+
+            const modal = document.getElementById('claimModal');
+            const content = document.getElementById('modalContent');
+            
+            document.getElementById('modalClaimTitle').textContent = claim.text.substring(0, 60) + '...';
+            document.getElementById('modalClaimMeta').textContent = `${getCategoryLabel(claim.category)} • ${claim.lastUpdated}`;
+            
+            content.innerHTML = `
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <!-- Left Column -->
+                    <div class="space-y-6">
+                        <!-- Claim Details -->
+                        <div class="p-6 rounded-2xl bg-slate-800/30">
+                            <h3 class="text-sm uppercase tracking-wider text-slate-500 mb-3">Claim Statement</h3>
+                            <p class="text-lg font-medium mb-4">"${claim.text}"</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 rounded-full text-xs ${getCategoryStyle(claim.category)}">${getCategoryLabel(claim.category)}</span>
+                                <span class="px-3 py-1 rounded-full text-xs bg-slate-700 text-slate-300">${getPlatformIcon(claim.platform)} ${claim.platform}</span>
+                                <span class="px-3 py-1 rounded-full text-xs bg-slate-700 text-slate-300">👁️ ${formatNumber(claim.reach)} reached</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Credibility Score -->
+                        <div class="p-6 rounded-2xl ${getCredibilityBgLight(claim.credibility)}">
+                            <div class="flex items-center gap-6">
+                                <div class="relative">
+                                    <svg class="w-28 h-28 score-ring" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10"/>
+                                        <circle cx="50" cy="50" r="40" fill="none" stroke="${getCredibilityColor(claim.credibility)}" stroke-width="10" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="${251.2 - (251.2 * claim.credibility / 100)}"/>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-3xl font-bold">${claim.credibility}%</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold mb-1">${getCredibilityLabel(claim.credibility)}</p>
+                                    <p class="text-sm text-slate-400 mb-2">Evidence Strength: <span class="font-medium text-white">${getEvidenceStrength(claim)}</span></p>
+                                    <p class="text-xs text-slate-500">Last updated: ${claim.lastUpdated}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Evidence Breakdown -->
+                        <div class="p-6 rounded-2xl bg-slate-800/30">
+                            <h3 class="font-semibold mb-4">Evidence Breakdown</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-24 text-sm text-slate-400">Supporting</div>
+                                    <div class="flex-1 h-3 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-green-500 evidence-bar" style="width: ${getEvidencePercent(claim, 'supporting')}%"></div>
+                                    </div>
+                                    <div class="w-8 text-sm font-medium text-right">${claim.evidence.supporting}</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-24 text-sm text-slate-400">Refuting</div>
+                                    <div class="flex-1 h-3 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-red-500 evidence-bar" style="width: ${getEvidencePercent(claim, 'refuting')}%"></div>
+                                    </div>
+                                    <div class="w-8 text-sm font-medium text-right">${claim.evidence.refuting}</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-24 text-sm text-slate-400">Uncertain</div>
+                                    <div class="flex-1 h-3 bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-slate-500 evidence-bar" style="width: ${getEvidencePercent(claim, 'uncertain')}%"></div>
+                                    </div>
+                                    <div class="w-8 text-sm font-medium text-right">${claim.evidence.uncertain}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column -->
+                    <div class="space-y-6">
+                        <!-- Score Timeline -->
+                        <div class="p-6 rounded-2xl bg-slate-800/30">
+                            <h3 class="font-semibold mb-4">Score History</h3>
+                            <div class="h-48">
+                                <canvas id="modalScoreChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Score Changelog -->
+                        <div class="p-6 rounded-2xl bg-slate-800/30">
+                            <h3 class="font-semibold mb-4">Score Changelog</h3>
+                            <div class="space-y-3 max-h-64 overflow-y-auto hide-scrollbar">
+                                <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30">
+                                    <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xs text-green-400">+8</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium">New evidence added</p>
+                                        <p class="text-xs text-slate-400">CDC published supporting statement</p>
+                                        <p class="text-xs text-slate-500 mt-1">2 hours ago</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30">
+                                    <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xs text-red-400">-12</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium">Evidence refuted</p>
+                                        <p class="text-xs text-slate-400">Original study methodology questioned</p>
+                                        <p class="text-xs text-slate-500 mt-1">5 hours ago</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                                        <span class="text-xs text-indigo-400">NEW</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium">Claim first detected</p>
+                                        <p class="text-xs text-slate-400">Initial baseline score: 30%</p>
+                                        <p class="text-xs text-slate-500 mt-1">1 day ago</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Context Scores -->
+                        <div class="p-6 rounded-2xl bg-slate-800/30">
+                            <h3 class="font-semibold mb-4">Context-Specific Scores</h3>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-700/30">
+                                    <span class="text-sm">General Population</span>
+                                    <span class="font-bold" style="color: ${getCredibilityColor(claim.credibility)}">${claim.credibility}%</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-700/30">
+                                    <span class="text-sm">Age 65+</span>
+                                    <span class="font-bold" style="color: ${getCredibilityColor(Math.max(0, claim.credibility - 15))}">${Math.max(0, claim.credibility - 15)}%</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-700/30">
+                                    <span class="text-sm">Pre-existing conditions</span>
+                                    <span class="font-bold" style="color: ${getCredibilityColor(Math.max(0, claim.credibility - 25))}">${Math.max(0, claim.credibility - 25)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // Initialize modal chart
+            setTimeout(() => {
+                const ctx = document.getElementById('modalScoreChart');
+                if (ctx) {
+                    new Chart(ctx.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
+                            datasets: [{
+                                data: [30, 35, 28, 45, 38, claim.credibility - 5, claim.credibility],
+                                borderColor: getCredibilityColor(claim.credibility),
+                                backgroundColor: 'transparent',
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointBackgroundColor: getCredibilityColor(claim.credibility)
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748b' } },
+                                y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748b' }, min: 0, max: 100 }
+                            }
+                        }
+                    });
+                }
+            }, 100);
+        }
+
+        function closeClaimModal() {
+            document.getElementById('claimModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // ============================================
+        // PROFILE & NOTIFICATIONS
+        // ============================================
+
+        function toggleProfileMenu() {
+            document.getElementById('profileMenu').classList.toggle('hidden');
+        }
+
+        function selectProfile(profile) {
+            currentProfile = profile;
+            const names = { strict: 'Strict Science', institutional: 'Institutional + Investigative', broad: 'Broad' };
+            document.getElementById('currentProfile').textContent = names[profile];
+            document.getElementById('profileMenu').classList.add('hidden');
+            showToast('Profile Updated', `Now using "${names[profile]}" evidence sources`, 'success');
+        }
+
+        function toggleNotifications() {
+            // Toggle notifications panel (simplified)
+            showToast('Notifications', '3 new updates about claims you follow', 'info');
+            document.getElementById('notifBadge').textContent = '0';
+        }
+
+        // ============================================
+        // TOASTS
+        // ============================================
+
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const colors = {
+                info: 'border-indigo-500 bg-indigo-500/10',
+                success: 'border-green-500 bg-green-500/10',
+                warning: 'border-orange-500 bg-orange-500/10',
+                error: 'border-red-500 bg-red-500/10'
+            };
+            
+            toast.className = `toast glass rounded-xl p-4 border-l-4 ${colors[type]} shadow-2xl`;
+            toast.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="flex-1">
+                        <p class="font-medium text-sm">${title}</p>
+                        <p class="text-xs text-slate-400 mt-1">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-slate-400 hover:text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showRandomToast() {
+            const toasts = [
+                { title: '🚨 Viral Claim Alert', message: 'New health claim spreading rapidly on Twitter', type: 'warning' },
+                { title: '📊 Score Updated', message: 'Climate claim credibility increased by 12%', type: 'info' },
+                { title: '✅ Correction Sent', message: '2,400 users received updates about a debunked claim', type: 'success' },
+                { title: '📚 New Evidence', message: 'WHO published statement on viral health claim', type: 'info' }
+            ];
+            const t = toasts[Math.floor(Math.random() * toasts.length)];
+            showToast(t.title, t.message, t.type);
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        function getCredibilityColor(score) {
+            if (score >= 75) return '#10b981';
+            if (score >= 50) return '#f59e0b';
+            if (score >= 25) return '#f97316';
+            return '#ef4444';
+        }
+
+        function getCredibilityClass(score) {
+            if (score >= 75) return 'text-green-400';
+            if (score >= 50) return 'text-yellow-400';
+            if (score >= 25) return 'text-orange-400';
+            return 'text-red-400';
+        }
+
+        function getCredibilityBg(score) {
+            if (score >= 75) return 'bg-gradient-to-br from-green-500 to-emerald-600';
+            if (score >= 50) return 'bg-gradient-to-br from-yellow-500 to-orange-500';
+            if (score >= 25) return 'bg-gradient-to-br from-orange-500 to-red-500';
+            return 'bg-gradient-to-br from-red-500 to-red-600';
+        }
+
+        function getCredibilityBgLight(score) {
+            if (score >= 75) return 'bg-green-500/10 border border-green-500/20';
+            if (score >= 50) return 'bg-yellow-500/10 border border-yellow-500/20';
+            if (score >= 25) return 'bg-orange-500/10 border border-orange-500/20';
+            return 'bg-red-500/10 border border-red-500/20';
+        }
+
+        function getCredibilityLabel(score) {
+            if (score >= 75) return 'Well-Supported';
+            if (score >= 50) return 'Mixed Evidence';
+            if (score >= 25) return 'Questionable';
+            return 'Highly Dubious';
+        }
+
+        function getCategoryStyle(cat) {
+            const styles = {
+                health: 'bg-green-500/20 text-green-400',
+                politics: 'bg-purple-500/20 text-purple-400',
+                climate: 'bg-blue-500/20 text-blue-400',
+                tech: 'bg-cyan-500/20 text-cyan-400',
+                finance: 'bg-yellow-500/20 text-yellow-400'
+            };
+            return styles[cat] || 'bg-slate-500/20 text-slate-400';
+        }
+
+        function getCategoryLabel(cat) {
+            const labels = {
+                health: '🏥 Health',
+                politics: '🏛️ Politics',
+                climate: '🌍 Climate',
+                tech: '💻 Tech',
+                finance: '💰 Finance'
+            };
+            return labels[cat] || cat;
+        }
+
+        function getPlatformIcon(platform) {
+            const icons = {
+                twitter: '𝕏',
+                reddit: '🔴',
+                youtube: '▶️',
+                news: '📰'
+            };
+            return icons[platform] || '🌐';
+        }
+
+        function getEvidencePercent(claim, type) {
+            const total = claim.evidence.supporting + claim.evidence.refuting + claim.evidence.uncertain;
+            if (total === 0) return 0;
+            return Math.round((claim.evidence[type] / total) * 100);
+        }
+
+        function getEvidenceStrength(claim) {
+            const total = claim.evidence.supporting + claim.evidence.refuting + claim.evidence.uncertain;
+            if (total >= 30) return 'Strong';
+            if (total >= 10) return 'Moderate';
+            if (total >= 5) return 'Weak';
+            return 'Insufficient';
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+            return num.toString();
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('[onclick*="toggleProfileMenu"]') && !e.target.closest('#profileMenu')) {
+                document.getElementById('profileMenu').classList.add('hidden');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeClaimModal();
+                document.getElementById('profileMenu').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
