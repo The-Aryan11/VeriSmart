@@ -33,9 +33,8 @@ Misinformation spreads faster than corrections, reaching millions before being d
 
 | Component | URL |
 |-----------|-----|
-| **Frontend Dashboard** | [https://verismart.onrender.com](https://verismart.onrender.com) |
-| **Backend API** | [https://YOUR_USERNAME-verismart.hf.space](https://huggingface.co/spaces) |
-| **API Health** | [/api/health](https://YOUR_USERNAME-verismart.hf.space/api/health) |
+| **Frontend Dashboard** | [https://verismart-1tcm.onrender.com](https://verismart-1tcm.onrender.com) |
+| **Backend API** | [https://aryan12345ark-verismart.hf.space](https://huggingface.co/spaces/aryan12345ark/VeriSmart)) |
 
 ---
 
