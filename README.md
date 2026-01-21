@@ -189,28 +189,6 @@ curl -X POST https://YOUR_USERNAME-verismart.hf.space/api/analyze \
 
 ---
 
-## 🎥 Video Demo Script (3 min)
-
-### 0:00-0:20 - Introduction
-"Hi, we're Aryan and Khushboo. We built VeriSmart, a real-time credibility engine that detects and corrects misinformation as it spreads."
-
-### 0:20-1:00 - Live Dashboard
-"Here's our live dashboard showing claims being tracked in real-time. Watch how the stats update automatically as new news comes in."
-
-### 1:00-1:40 - Evidence Analysis
-"Let me analyze a claim live. I'll enter 'Vitamin D prevents COVID' and you can see the evidence being collected from PubMed and scored instantly."
-
-### 1:40-2:20 - Proving Real-Time
-"To prove this is truly real-time, watch what happens when I trigger a news refresh... New claims appear immediately in our feed."
-
-### 2:20-2:50 - Correction System
-"Here's how corrections are delivered - non-backfire framing that respects users while providing accurate information."
-
-### 2:50-3:00 - Conclusion
-"VeriSmart: Real-time credibility at scale. Thank you!"
-
----
-
 ## 📁 Project Structure
 
 ```
@@ -226,17 +204,6 @@ verismart/
     └── workflows/
         └── keep-alive.yml        # Pinger workflow
 ```
-
----
-
-## 🏆 Hackathon Criteria Alignment
-
-| Criterion | Weight | Our Implementation |
-|-----------|--------|-------------------|
-| **Real-Time Capability** | 35% | ✅ Pathway streaming, live news ingestion, instant updates |
-| **Technical Implementation** | 30% | ✅ Clean modular code, Pathway patterns, REST API |
-| **Innovation & UX** | 20% | ✅ Beautiful dashboard, evidence profiles, transparent scoring |
-| **Impact & Feasibility** | 15% | ✅ Real-world problem, scalable architecture, production-ready |
 
 ---
 
@@ -257,7 +224,7 @@ verismart/
 
 <div align="center">
 
-**Built with ❤️ for the Pathway Hackathon**
+**Built with ❤️ for DataQuest 2026**
 
 Powered by [Pathway](https://pathway.com) • Hosted on [HuggingFace](https://huggingface.co) & [Render](https://render.com)
 
